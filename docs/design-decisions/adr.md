@@ -41,6 +41,37 @@ Negative:
 
 ---
 
+## 2026-05-20: Use a lightweight Vite plus TypeScript shell around Phaser
+
+### Context
+Phase 0 also needs to lock the visualizer packaging boundary before replay work
+starts. The board renderer should use Phaser, but the rest of the spectator UI
+should stay lightweight and avoid committing the repository to React or another
+large framework.
+
+### Decision
+Use `visualizer/` as a lightweight Vite plus TypeScript browser shell. Phaser
+is the board-rendering dependency inside that shell, while playback controls,
+artifact loading, and layout stay in minimal web-standard code.
+
+### Consequences
+Positive:
+
+- Phaser is fixed as the board-rendering layer without expanding it into a full
+  application framework.
+- Later replay work can grow inside `visualizer/` without revisiting the root
+  packaging choice.
+- The repository avoids early coupling to React or a larger UI framework.
+
+Negative:
+
+- The repo now carries a third toolchain surface in addition to Rust and small
+  Go support lanes.
+- A future richer spectator UI may need more structure inside the shell if the
+  control surface grows substantially.
+
+---
+
 ## [YYYY-MM-DD] Title of Decision
 
 ### Context
