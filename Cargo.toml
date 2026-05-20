@@ -1,0 +1,6 @@
+[workspace]
+members = [
+  "games/reversi",
+  "players/rust-reference",
+]
+resolver = "2"
