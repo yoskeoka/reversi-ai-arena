@@ -45,6 +45,8 @@ Related architectural record:
 
 ## Spec Changes
 
+- Update [docs/project-plan.md](../../project-plan.md) during execution to mark
+  the Phase 0 milestone complete once the accepted Phase 0 deliverables land.
 - Add a repository-structure spec that defines the ownership and allowed
   contents of each top-level directory.
 - Add a Phase 0 boundary spec that explains what remains in `ai-arena` versus
@@ -70,6 +72,8 @@ Related architectural record:
 - [ ] [parallel] Write the visualizer architecture and language/toolchain specs.
 - [ ] [depends on: spec updates] Add the agreed top-level scaffolding and
       minimal config files.
+- [ ] [depends on: top-level scaffolding] Update `docs/project-plan.md` to
+      check off Phase 0 after the acceptance criteria are satisfied.
 - [ ] [depends on: top-level scaffolding] Verify the repo shape, docs links, and
       Phase 0 acceptance criteria locally.
 
@@ -83,6 +87,8 @@ Related architectural record:
 
 - Confirm the repository tree matches the specified Phase 0 layout.
 - Confirm every new scaffold root is covered by a spec.
+- Confirm `docs/project-plan.md` marks Phase 0 complete only after the
+  repository-layout, boundary, toolchain, and visualizer decisions are landed.
 - Run the repo's applicable documentation or workflow checks for the planning
   and execution changes.
 
