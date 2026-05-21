@@ -9,3 +9,7 @@ Phase 0 currently defines:
 - `platform-boundary.md`
 - `visualizer-architecture.md`
 - `language-toolchain-policy.md`
+
+Phase 1 foundation adds:
+
+- `quality-gates.md`
