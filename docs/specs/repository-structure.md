@@ -51,6 +51,14 @@ than by language.
 - golden replay artifacts
 - end-to-end verification helpers
 
+### `tools/`
+
+- repository-local verification helpers that are called from root-level
+  developer commands and CI workflows
+- shell wrappers or small scripts that keep local and CI verification paths
+  aligned
+- no hidden machine-specific setup that bypasses the repository toolchain
+
 ## Layout Rules
 
 - Surface ownership is the primary boundary; language-specific files may exist

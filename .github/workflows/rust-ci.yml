@@ -6,10 +6,12 @@ on:
       - ".github/workflows/rust-ci.yml"
       - "Cargo.toml"
       - "Cargo.lock"
+      - "Makefile"
       - "rust-toolchain.toml"
       - "cmd/**"
       - "games/reversi/**"
       - "players/rust-reference/**"
+      - "tools/rust-ci.sh"
   push:
     branches:
       - main
@@ -17,10 +19,12 @@ on:
       - ".github/workflows/rust-ci.yml"
       - "Cargo.toml"
       - "Cargo.lock"
+      - "Makefile"
       - "rust-toolchain.toml"
       - "cmd/**"
       - "games/reversi/**"
       - "players/rust-reference/**"
+      - "tools/rust-ci.sh"
 
 jobs:
   detect:
@@ -41,36 +45,39 @@ jobs:
               - ".github/workflows/rust-ci.yml"
               - "Cargo.toml"
               - "Cargo.lock"
+              - "Makefile"
               - "rust-toolchain.toml"
               - "cmd/**"
+              - "tools/rust-ci.sh"
             game:
               - "games/reversi/**"
             player:
               - "players/rust-reference/**"
 
-  workspace-test:
+  workspace-verify:
     runs-on: ubuntu-latest
     needs: detect
     if: needs.detect.outputs.full == 'true'
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
-      - run: cargo test --workspace
+      - run: make verify-rust
 
-  game-build:
+  game-verify:
     runs-on: ubuntu-latest
     needs: detect
-    if: needs.detect.outputs.full == 'true' || needs.detect.outputs.game == 'true'
+    if: needs.detect.outputs.full != 'true' && needs.detect.outputs.game == 'true'
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
-      - run: cargo build -p reversi-game
+      - run: cargo test -p reversi-game
 
-  player-build:
+  player-verify:
     runs-on: ubuntu-latest
     needs: detect
-    if: needs.detect.outputs.full == 'true' || needs.detect.outputs.player == 'true'
+    if: needs.detect.outputs.full != 'true' && needs.detect.outputs.player == 'true'
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
-      - run: cargo build -p reversi-rust-reference-player
+      - run: cargo test -p reversi-rust-reference-player
+      - run: make wasm-check
