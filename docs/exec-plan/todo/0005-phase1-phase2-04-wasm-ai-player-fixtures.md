@@ -8,8 +8,10 @@ consumer of the Phase 1 game and protocol surfaces, while adding the fixture
 build/cache strategy required to test that path repeatedly without rebuilding
 every player binary inside each test case.
 
-This plan also introduces the lightweight Go reference bot only where it helps
-fixture coverage, protocol examples, or comparative verification.
+This plan takes over where Phase 1 stops: the minimal runner-driving fixture
+players already exist, and this phase upgrades the player surface into a real,
+non-trivial AI-player line while preserving fixture-build caching for repeated
+WASM verification.
 
 ## Confirmed Direction
 
@@ -19,6 +21,10 @@ fixture coverage, protocol examples, or comparative verification.
   rebuilds are not an acceptable steady-state strategy.
 - The Reversi game master binary remains a separate build artifact and must be
   present for the Phase 2 end-to-end path.
+- Phase 1 already owns the minimum fixture-player surface needed to drive the
+  runner, so Phase 2 should not spend its main effort on another trivial bot.
+  Its responsibility is to deliver a meaningfully thinking AI-player on top of
+  that base.
 - A lightweight Go reference bot may exist, but it is a support lane rather
   than the main competitive implementation path.
 - `reversi-adventure` is the logic reference for the Reversi engine and AI
@@ -32,6 +38,9 @@ fixture coverage, protocol examples, or comparative verification.
   - build Rust WASM players once per verification scope
   - cache the produced `.wasm` and manifest artifacts
   - expose stable fixture paths to e2e and integration tests
+- Evolve beyond the Phase 1 fixture-player baseline by implementing search,
+  evaluation, or other non-trivial move-selection behavior derived from the
+  `reversi-adventure` reference line.
 - Add a minimal Go reference bot or helper only if needed for comparison lanes,
   protocol examples, or non-Rust fixture coverage.
 - Add e2e coverage that runs the tagged `arena-runner` host with:
@@ -61,6 +70,9 @@ fixture coverage, protocol examples, or comparative verification.
   mainline.
 - Reuse Reversi rule and AI ideas from `reversi-adventure`, but keep crate
   ownership and protocol integration fully local to this repository.
+- Treat the Phase 1 fixture players as scaffolding. Phase 2's acceptance bar is
+  a player with meaningful decision logic, not merely another completion-only
+  scripted or first-legal-move bot.
 
 ## Sub-tasks
 
@@ -70,6 +82,8 @@ fixture coverage, protocol examples, or comparative verification.
       WASM player from `reversi-adventure` references.
 - [ ] [parallel] Add reusable build/cache helpers for Rust WASM test fixtures
       and manifests.
+- [ ] [depends on: Rust AI logic] Define how the Phase 2 player exceeds the
+      Phase 1 fixture bots in move selection quality and verification coverage.
 - [ ] [parallel] Add the optional Go reference bot only if a concrete fixture or
       protocol-coverage need remains after the Rust lane is defined.
 - [ ] [depends on: Rust AI logic, build/cache helpers] Add unit/integration/e2e
