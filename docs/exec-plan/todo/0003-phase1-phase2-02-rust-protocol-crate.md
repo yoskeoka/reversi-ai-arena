@@ -21,23 +21,35 @@ on Reversi behavior instead of transport re-design.
   the AI-player sidecar path needed by WASM players.
 - The compatibility layer must avoid importing or re-creating platform-internal
   `ai-arena` packages.
+- Shared transport/framing code should live in a neutral internal crate rather
+  than under `games/reversi/` or `players/`, because neither product surface
+  should own the generic `ai-arena` contract by itself.
+- Reversi-specific payload DTOs remain owned by `games/reversi/` and are reused
+  by both the game master and Rust AI-player implementations.
 
 ## Code Changes
 
-- Add one or more Rust crates under repository-owned surfaces, likely:
-  - `games/reversi/` for game-master-facing protocol support
-  - `players/` or a narrow shared Rust crate for AI-player-facing protocol DTOs
+- Add a neutral shared Rust crate, likely under `internal/aiarena-protocol/`,
+  that owns:
+  - JSON-RPC 2.0 envelope types
+  - NDJSON framing helpers
+  - game-master RPC schema encode/decode
+  - AI-player RPC schema encode/decode
+- Keep Reversi-specific request/response payload DTOs in `games/reversi/` so
+  the game master and the Rust AI player share the same game-owned types rather
+  than duplicating board/action/result payload definitions across surfaces.
 - Implement public DTOs, method names, request/response types, and NDJSON I/O
   helpers that match the documented `ai-arena` contract.
 - Add tests for protocol encoding/decoding, method dispatch shape, and metadata
   compatibility helpers.
-- If shared protocol code is needed by both the game master and the Rust
-  player, place it in the narrowest reusable crate that still preserves the
-  product-surface-first layout.
+- Wire both `games/reversi/` and the Rust AI-player crate under `players/` to
+  consume the shared transport crate plus the Reversi-owned payload DTOs.
 
 ## Spec Changes
 
 - Add a spec that defines the Rust-side compatibility layer for:
+  - the neutral internal crate boundary
+  - shared JSON-RPC / NDJSON transport helpers
   - game-master transport methods
   - AI-player transport methods
   - DTO mapping and serialization expectations
@@ -45,16 +57,19 @@ on Reversi behavior instead of transport re-design.
 - Update [docs/specs/platform-boundary.md](../../specs/platform-boundary.md) to
   record the allowed dependency direction and the fact that the Rust protocol
   layer exists because no official Rust package is available yet.
-- If the shared crate placement creates a reusable internal boundary, update
-  [docs/specs/repository-structure.md](../../specs/repository-structure.md) to
-  describe that ownership explicitly.
+- Update [docs/specs/repository-structure.md](../../specs/repository-structure.md)
+  to describe the new `internal/` ownership boundary explicitly if that
+  top-level surface is introduced for shared Rust support code.
 
 ## Design Decisions
 
 - Mirror the documented contract shape, not the current internal implementation
   shape of `ai-arena`.
-- Prefer shared DTO/transport helpers over copy-pasting ad hoc JSON handling
-  into both the game master and the AI-player crates.
+- Prefer one shared transport/framing crate with separate `gamemaster` and
+  `player` modules over copy-pasting ad hoc JSON handling into both runtime
+  surfaces.
+- Keep transport/framing DTOs separate from Reversi payload DTOs so game-owned
+  state/action/result types continue to live under `games/reversi/`.
 - Keep the crate boundary small enough that future upstream Rust SDK adoption,
   if it ever appears, can replace this layer without rewriting Reversi logic.
 
@@ -65,11 +80,13 @@ on Reversi behavior instead of transport re-design.
 - [ ] [parallel] Implement game-master-facing DTOs and NDJSON transport helpers.
 - [ ] [parallel] Implement AI-player-facing DTOs and NDJSON transport helpers.
 - [ ] [depends on: game-master DTOs, AI-player DTOs] Consolidate shared serde
-      or framing helpers into the narrowest stable crate boundary.
+      or framing helpers into the neutral `internal/aiarena-protocol` boundary.
+- [ ] [depends on: shared helpers] Define how `games/reversi/` owns the
+      Reversi payload DTOs consumed by both the game master and the AI-player.
 - [ ] [depends on: shared helpers] Add unit tests for request/response framing,
       metadata compatibility fields, and malformed-payload handling.
 - [ ] [depends on: tested crate surface] Document how later plans consume the
-      protocol crate from `games/reversi/` and `players/`.
+      shared transport crate plus the Reversi-owned payload DTOs.
 
 ## Parallelism
 
@@ -85,6 +102,9 @@ on Reversi behavior instead of transport re-design.
   by the `ai-arena` public documentation.
 - No crate in this repo depends on `ai-arena` internal packages or a local
   workspace checkout contract.
+- The resulting ownership split is explicit: generic transport in
+  `internal/aiarena-protocol/`, Reversi payload types in `games/reversi/`, and
+  runtime-specific usage in the game-master and AI-player crates.
 
 ## Out of Scope
 

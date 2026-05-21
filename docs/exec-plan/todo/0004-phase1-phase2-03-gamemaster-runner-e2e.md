@@ -14,8 +14,9 @@ game path rather than a local-only rules prototype.
 
 - The game master is built in Rust.
 - `arena-runner` must be consumed as a versioned external host, installed from
-  `go install ...@v0.1.x` or otherwise pinned to that exact tag family during
-  verification, not via a sibling checkout path.
+  `go install github.com/yoskeoka/ai-arena/cmd/arena-runner@v0.1.0` or
+  consumed via the equivalent tagged module path during verification, not via a
+  sibling checkout path.
 - The game master binary is built in this repository and then launched through
   the tagged host.
 - `dungeon-game-ai-arena` e2e structure is the direct reference for the runner
@@ -24,8 +25,8 @@ game path rather than a local-only rules prototype.
 ## Code Changes
 
 - Implement the Reversi rules/core match progression in `games/reversi/`.
-- Add a runnable Rust game-master binary under `cmd/` or another thin entrypoint
-  surface that matches the repository-structure policy.
+- Add a runnable Rust game-master binary under `cmd/`, which remains the owning
+  entrypoint surface in the repository-structure policy.
 - Add local/e2e test helpers and golden-style assertions under:
   - `e2e/`
   - `testdata/`
@@ -42,7 +43,8 @@ game path rather than a local-only rules prototype.
   - exported snapshot/result expectations
   - the binary entrypoint and its runner-facing contract
 - Add a tagged-runner consumption spec for this repository that fixes:
-  - the `ai-arena` host version policy
+  - the `ai-arena` host version policy, starting with
+    `github.com/yoskeoka/ai-arena/cmd/arena-runner@v0.1.0`
   - local and CI invocation strategy
   - what artifacts must exist after a successful match
 - Update [docs/project-plan.md](../../project-plan.md) during execution to mark
