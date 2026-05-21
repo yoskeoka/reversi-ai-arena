@@ -12,7 +12,11 @@
 ## Toolchain Boundaries
 
 - The Rust workspace is rooted at the repository top level and currently owns
-  crates under `games/reversi/` and `players/rust-reference/`.
+  crates under `games/reversi/`, `players/rust-reference/`, and
+  `internal/aiarena-protocol/`.
+- `internal/aiarena-protocol/` is the neutral Rust compatibility crate for the
+  public `ai-arena` transport contract. It may be shared by the game master and
+  player surfaces, but it must stay free of Reversi rules logic.
 - The repository Rust toolchain must include `rustfmt`, `clippy`, and the
   `wasm32-unknown-unknown` target so local and CI verification can exercise the
   same baseline without ad hoc setup.
@@ -39,6 +43,8 @@
   - `games/reversi/**` changes run the Reversi game-surface build only
   - `players/rust-reference/**` changes run the Rust player-surface test and
     WASM build verification path
+  - `internal/aiarena-protocol/**` changes run the Rust workspace verification
+    path because they affect both game-master and player transport code
   - `cmd/**`, root Rust-toolchain files, or the Rust workflow definition run the
     full Rust verification path because those changes can affect multiple Rust
     surfaces

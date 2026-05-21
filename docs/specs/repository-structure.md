@@ -15,6 +15,8 @@ than by language.
 - `visualizer/`: replay and future watcher clients
 - `e2e/`: cross-surface verification assets
 - `testdata/`: deterministic fixtures and golden artifacts
+- `internal/`: repository-local shared support code that is not owned by one
+  product surface
 - `tools/`: repository-local support scripts
 - `docs/`: plans, specs, ADRs, and references
 
@@ -37,6 +39,14 @@ than by language.
 - Rust mainline player implementations
 - optional Go reference-bot or fixture support code
 - no spectator UI code
+
+### `internal/`
+
+- repository-local shared support crates such as Rust transport compatibility
+  code
+- code that is shared across `games/reversi/` and `players/` without becoming a
+  public top-level product surface
+- no Reversi rules implementation, AI search logic, or visualizer code
 
 ### `visualizer/`
 
@@ -65,8 +75,8 @@ than by language.
   inside a surface, but language is not a top-level organizing principle.
 - New top-level directories require a spec update or ADR that explains their
   ownership.
-- Shared logic should prefer the narrowest owning surface first. A future shared
-  internal package is allowed only when duplication across `games/reversi/` and
+- Shared logic should prefer the narrowest owning surface first. Shared code
+  may move under `internal/` only after duplication across `games/reversi/` and
   `players/` becomes concrete.
 
 ## Phase 0 Completion Contract

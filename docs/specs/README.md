@@ -13,3 +13,4 @@ Phase 0 currently defines:
 Phase 1 foundation adds:
 
 - `quality-gates.md`
+- `rust-protocol-compatibility.md`
