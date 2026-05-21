@@ -6,10 +6,12 @@ on:
       - ".github/workflows/rust-ci.yml"
       - "Cargo.toml"
       - "Cargo.lock"
+      - "Makefile"
       - "rust-toolchain.toml"
       - "cmd/**"
       - "games/reversi/**"
       - "players/rust-reference/**"
+      - "tools/rust-ci.sh"
   push:
     branches:
       - main
@@ -17,10 +19,12 @@ on:
       - ".github/workflows/rust-ci.yml"
       - "Cargo.toml"
       - "Cargo.lock"
+      - "Makefile"
       - "rust-toolchain.toml"
       - "cmd/**"
       - "games/reversi/**"
       - "players/rust-reference/**"
+      - "tools/rust-ci.sh"
 
 jobs:
   detect:
@@ -41,8 +45,10 @@ jobs:
               - ".github/workflows/rust-ci.yml"
               - "Cargo.toml"
               - "Cargo.lock"
+              - "Makefile"
               - "rust-toolchain.toml"
               - "cmd/**"
+              - "tools/rust-ci.sh"
             game:
               - "games/reversi/**"
             player:

@@ -6,7 +6,7 @@ visualizer, fixtures, and public examples that integrate with `ai-arena`.
 Phase 0 establishes the repository shape and toolchain boundaries before game
 logic, AI logic, and spectator features are implemented.
 
-Current Rust verification entrypoints:
+Current verification entrypoints:
 
 - `make verify-rust`
 - `make verify-workflows`

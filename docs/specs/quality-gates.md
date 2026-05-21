@@ -22,8 +22,8 @@ Run these commands from the repository root:
 ## Minimum Pre-PR Verification
 
 - PRs that touch `games/reversi/**`, `players/rust-reference/**`, `cmd/**`,
-  root Rust-toolchain files, or the Rust CI workflow must run
-  `make verify-rust`.
+  `Makefile`, `tools/rust-ci.sh`, root Rust-toolchain files, or the Rust CI
+  workflow must run `make verify-rust`.
 - PRs that change workflow files should also run `make verify-workflows`.
 - Go and browser verification stay targeted to later phases and are not part of
   the Phase 1/2 baseline unless those owning surfaces change.
