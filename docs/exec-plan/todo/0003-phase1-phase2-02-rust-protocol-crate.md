@@ -44,6 +44,9 @@ on Reversi behavior instead of transport re-design.
   compatibility helpers.
 - Wire both `games/reversi/` and the Rust AI-player crate under `players/` to
   consume the shared transport crate plus the Reversi-owned payload DTOs.
+- Update the root `Cargo.toml` workspace membership and any required path
+  dependencies so the shared crate is built and tested as part of the repo's
+  standard Rust workspace.
 
 ## Spec Changes
 
@@ -60,6 +63,9 @@ on Reversi behavior instead of transport re-design.
 - Update [docs/specs/repository-structure.md](../../specs/repository-structure.md)
   to describe the new `internal/` ownership boundary explicitly if that
   top-level surface is introduced for shared Rust support code.
+- Update [docs/specs/language-toolchain-policy.md](../../specs/language-toolchain-policy.md)
+  so the documented Rust workspace layout matches the added shared internal
+  crate and any resulting verification-scope changes.
 
 ## Design Decisions
 
@@ -81,6 +87,9 @@ on Reversi behavior instead of transport re-design.
 - [ ] [parallel] Implement AI-player-facing DTOs and NDJSON transport helpers.
 - [ ] [depends on: game-master DTOs, AI-player DTOs] Consolidate shared serde
       or framing helpers into the neutral `internal/aiarena-protocol` boundary.
+- [ ] [depends on: shared helpers] Register the shared crate in the root
+      `Cargo.toml` workspace and wire the required path dependencies from
+      `games/reversi/` and the Rust AI-player crate.
 - [ ] [depends on: shared helpers] Define how `games/reversi/` owns the
       Reversi payload DTOs consumed by both the game master and the AI-player.
 - [ ] [depends on: shared helpers] Add unit tests for request/response framing,
@@ -105,6 +114,9 @@ on Reversi behavior instead of transport re-design.
 - The resulting ownership split is explicit: generic transport in
   `internal/aiarena-protocol/`, Reversi payload types in `games/reversi/`, and
   runtime-specific usage in the game-master and AI-player crates.
+- The root Cargo workspace and the toolchain-policy spec both reflect the added
+  shared crate, so execution work does not have to infer hidden workspace
+  wiring.
 
 ## Out of Scope
 

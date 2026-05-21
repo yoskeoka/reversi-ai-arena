@@ -15,9 +15,9 @@ game path rather than a local-only rules prototype.
 
 - The game master is built in Rust.
 - `arena-runner` must be consumed as a versioned external host, installed from
-  `go install github.com/yoskeoka/ai-arena/cmd/arena-runner@v0.1.0` or
-  consumed via the equivalent tagged module path during verification, not via a
-  sibling checkout path.
+  `go install github.com/yoskeoka/ai-arena/cmd/arena-runner@v0.1.0`, then
+  executed as the pinned binary on `PATH` during local and CI verification, not
+  via a sibling checkout path.
 - The game master binary is built in this repository and then launched through
   the tagged host.
 - `dungeon-game-ai-arena` e2e structure is the direct reference for the runner
@@ -58,7 +58,8 @@ game path rather than a local-only rules prototype.
 - Add a tagged-runner consumption spec for this repository that fixes:
   - the `ai-arena` host version policy, starting with
     `github.com/yoskeoka/ai-arena/cmd/arena-runner@v0.1.0`
-  - local and CI invocation strategy
+  - the single local and CI invocation strategy: install the pinned binary, then
+    invoke that installed `arena-runner`
   - the minimum fixture-player contract required for Phase 1 runner e2e
   - what artifacts must exist after a successful match
 - Add or extend a verification-assets spec that records the deterministic Phase
