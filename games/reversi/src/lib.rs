@@ -55,13 +55,11 @@ pub struct VisibleState {
     pub current_player: Option<PlayerColor>,
     pub legal_actions: Vec<Position>,
     pub scores: ScoreSummary,
-    pub pass_required: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LegalActionHint {
     pub legal_actions: Vec<Position>,
-    pub pass_allowed: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -124,7 +122,6 @@ pub fn sample_visible_state() -> VisibleState {
         current_player: Some(PlayerColor::Black),
         legal_actions: vec![Position { row: 0, col: 1 }, Position { row: 1, col: 0 }],
         scores: ScoreSummary { black: 2, white: 2 },
-        pass_required: false,
     }
 }
 
@@ -139,7 +136,6 @@ mod tests {
             visible_state: sample_visible_state(),
             legal_action_hint: LegalActionHint {
                 legal_actions: vec![Position { row: 2, col: 3 }],
-                pass_allowed: false,
             },
             deadline_ms: 1_500,
         };

@@ -102,6 +102,17 @@ and the Rust player consume:
 Those DTOs must be used through shared transport types instead of duplicated
 copies under `games/reversi/` and `players/`.
 
+For Reversi specifically:
+
+- `legal_actions` is the authority for pass behavior.
+- `legal_actions` empty means the player must emit `pass`.
+- if `legal_actions` contains one or more moves, `pass` is illegal.
+- even when only `pass` is legal, the game master should still request and
+  record that player response so each move is reflected in the shared move log
+  and each player receives an equivalent turn budget.
+- a future game-master implementation must treat timeout or illegal action in a
+  turn with one or more legal moves as an immediate loss for that player.
+
 ## Verification Contract
 
 - Unit tests must cover JSON-RPC request and response framing.

@@ -113,11 +113,9 @@ mod tests {
                 current_player: Some(PlayerColor::Black),
                 legal_actions: vec![Position { row: 0, col: 0 }],
                 scores: ScoreSummary { black: 2, white: 2 },
-                pass_required: false,
             },
             legal_action_hint: LegalActionHint {
                 legal_actions: vec![Position { row: 0, col: 0 }],
-                pass_allowed: false,
             },
             deadline_ms: 500,
         };
@@ -133,11 +131,22 @@ mod tests {
             &reversi_game::sample_visible_state(),
             &LegalActionHint {
                 legal_actions: vec![Position { row: 2, col: 3 }],
-                pass_allowed: false,
             },
         );
         assert_eq!(action.kind, ActionKind::Place);
         assert_eq!(action.position.expect("position").col, 3);
+    }
+
+    #[test]
+    fn placeholder_action_passes_only_when_no_legal_action_exists() {
+        let action = choose_placeholder_action(
+            &reversi_game::sample_visible_state(),
+            &LegalActionHint {
+                legal_actions: Vec::new(),
+            },
+        );
+        assert_eq!(action.kind, ActionKind::Pass);
+        assert_eq!(action.position, None);
     }
 
     #[test]
