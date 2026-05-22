@@ -25,6 +25,16 @@ WASM verification.
   runner, so Phase 2 should not spend its main effort on another trivial bot.
   Its responsibility is to deliver a meaningfully thinking AI-player on top of
   that base.
+- Reversi pass behavior on the player side is determined entirely by
+  `legal_actions`:
+  - when `legal_actions` is empty, the player must emit `pass`
+  - when `legal_actions` is non-empty, `pass` is illegal
+- Forced-pass turns are still explicit turn responses, not silent skips, so the
+  player must remain able to consume the latest move log and answer every turn
+  request from the game master.
+- If the player has one or more legal moves and responds with timeout or
+  illegal action, the game-master contract is expected to treat that result as
+  an immediate loss for that player.
 - A lightweight Go reference bot may exist, but it is a support lane rather
   than the main competitive implementation path.
 - `reversi-adventure` is the logic reference for the Reversi engine and AI
@@ -53,6 +63,10 @@ WASM verification.
 - Add a Reversi AI-player spec covering:
   - WASM runtime assumptions
   - manifest layout and metadata
+  - explicit forced-pass responses derived from empty `legal_actions`
+  - the requirement to avoid illegal `pass` when one or more legal moves exist
+  - the match-loss consequence of timeout or illegal action when legal moves
+    exist
   - fixture-build/cache policy for tests
   - the role of the optional Go reference bot
 - Add or extend a verification-assets spec to document:
@@ -102,8 +116,12 @@ WASM verification.
 ## Verification
 
 - Rust unit tests cover the AI-player logic that was adapted for the WASM lane.
+- Player-side tests cover both explicit forced-pass responses and refusal to
+  emit `pass` when legal moves exist.
 - Fixture helpers can build and reuse WASM artifacts across multiple tests.
 - Tagged-runner e2e tests complete with the Rust WASM AI player.
+- Tagged-runner verification covers the immediate-loss path for timeout or
+  illegal action when the player had legal moves.
 - CI runs the Rust WASM verification lane without hidden local-only setup.
 
 ## Out of Scope

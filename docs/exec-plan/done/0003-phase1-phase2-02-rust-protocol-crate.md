@@ -81,20 +81,20 @@ on Reversi behavior instead of transport re-design.
 
 ## Sub-tasks
 
-- [ ] Define the Rust protocol-crate responsibility in specs before adding
+- [x] Define the Rust protocol-crate responsibility in specs before adding
       transport code.
-- [ ] [parallel] Implement game-master-facing DTOs and NDJSON transport helpers.
-- [ ] [parallel] Implement AI-player-facing DTOs and NDJSON transport helpers.
-- [ ] [depends on: game-master DTOs, AI-player DTOs] Consolidate shared serde
+- [x] [parallel] Implement game-master-facing DTOs and NDJSON transport helpers.
+- [x] [parallel] Implement AI-player-facing DTOs and NDJSON transport helpers.
+- [x] [depends on: game-master DTOs, AI-player DTOs] Consolidate shared serde
       or framing helpers into the neutral `internal/aiarena-protocol` boundary.
-- [ ] [depends on: shared helpers] Register the shared crate in the root
+- [x] [depends on: shared helpers] Register the shared crate in the root
       `Cargo.toml` workspace and wire the required path dependencies from
       `games/reversi/` and the Rust AI-player crate.
-- [ ] [depends on: shared helpers] Define how `games/reversi/` owns the
+- [x] [depends on: shared helpers] Define how `games/reversi/` owns the
       Reversi payload DTOs consumed by both the game master and the AI-player.
-- [ ] [depends on: shared helpers] Add unit tests for request/response framing,
+- [x] [depends on: shared helpers] Add unit tests for request/response framing,
       metadata compatibility fields, and malformed-payload handling.
-- [ ] [depends on: tested crate surface] Document how later plans consume the
+- [x] [depends on: tested crate surface] Document how later plans consume the
       shared transport crate plus the Reversi-owned payload DTOs.
 
 ## Parallelism

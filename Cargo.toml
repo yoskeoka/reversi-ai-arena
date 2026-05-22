@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "games/reversi",
+  "internal/aiarena-protocol",
   "players/rust-reference",
 ]
 resolver = "2"

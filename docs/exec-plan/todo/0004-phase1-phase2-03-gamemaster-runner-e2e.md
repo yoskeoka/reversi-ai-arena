@@ -27,6 +27,15 @@ game path rather than a local-only rules prototype.
   - a legal-move fixture bot that always selects the first legal move when the
     game master exposes legal choices
   - a deterministic scripted fixture bot that follows a fixed move list
+- Reversi pass handling is fully determined by the legal-move set:
+  - when `legal_actions` is empty, the current player must emit `pass`
+  - when `legal_actions` is non-empty, `pass` is illegal
+- Even in forced-pass turns, the game master should still issue a turn request
+  and require an explicit `pass` response so move-by-move logs stay shared
+  across players and each turn consumes an equivalent decision window.
+- If a player has one or more legal moves and responds with timeout or illegal
+  action, the game master should treat that event as an immediate loss for that
+  player.
 - These Phase 1 players are verification fixtures, not the main competitive AI
   implementation. Building a stronger WASM AI remains the responsibility of
   Phase 2.
@@ -53,6 +62,9 @@ game path rather than a local-only rules prototype.
 - Add a Reversi game-master spec covering:
   - game identity and metadata
   - board state lifecycle and pass handling
+  - forced-pass turns as explicit player responses rather than silent skips
+  - immediate-loss handling for timeout or illegal action when legal moves
+    exist
   - exported snapshot/result expectations
   - the binary entrypoint and its runner-facing contract
 - Add a tagged-runner consumption spec for this repository that fixes:
@@ -114,6 +126,10 @@ game path rather than a local-only rules prototype.
 - The game-master binary builds from the repo root.
 - The legal-move-first fixture bot can finish a match by consuming legal moves
   from the game master.
+- Forced-pass turns still flow through explicit player `turn` requests and
+  `pass` responses in the resulting records.
+- A player that has legal moves but times out or emits an illegal action loses
+  immediately, and that outcome is covered by deterministic verification.
 - The scripted fixture bot can replay the two fixed game lines listed in this
   plan and reach terminal state consistently.
 - The tagged `arena-runner` host can complete a Reversi match against local
