@@ -60,6 +60,7 @@ mod tests {
     fn tagged_runner_completes_with_first_legal_fixtures() {
         let repo = repo_root();
         let runner = runner_bin();
+        let fixtures = build_fixtures(&repo);
         let fixture_dir = prepare_fixture_dir(&repo);
         let output_dir = fixture_dir.join("artifacts-first-legal");
         let manifest_path = write_game_master_manifest(&fixture_dir, &repo);
@@ -79,12 +80,12 @@ mod tests {
                 "--player",
                 &format!(
                     "p1={}",
-                    repo_relative(&repo, &repo.join("target/debug/reversi-legal-move-first"))
+                    repo_relative(&repo, &fixtures.legal_move_first_entry)
                 ),
                 "--player",
                 &format!(
                     "p2={}",
-                    repo_relative(&repo, &repo.join("target/debug/reversi-legal-move-first"))
+                    repo_relative(&repo, &fixtures.legal_move_first_entry)
                 ),
             ],
         );
@@ -98,20 +99,70 @@ mod tests {
 
     #[test]
     #[ignore = "requires pinned tagged arena-runner install"]
+    fn tagged_runner_completes_with_rust_wasm_fixture() {
+        let repo = repo_root();
+        let runner = runner_bin();
+        let fixtures = build_fixtures(&repo);
+        let fixture_dir = prepare_fixture_dir(&repo);
+        let output_dir = fixture_dir.join("artifacts-rust-wasm");
+        let manifest_path = write_game_master_manifest(&fixture_dir, &repo);
+
+        run_runner(
+            &runner,
+            &repo,
+            &[
+                "--game-master-manifest",
+                &repo_relative(&repo, &manifest_path),
+                "--match-id",
+                "reversi-rust-wasm",
+                "--output-dir",
+                &repo_relative(&repo, &output_dir),
+                "--log-output",
+                "none",
+                "--player",
+                &format!("p1={}", repo_relative(&repo, &fixtures.rust_wasm_entry)),
+                "--player",
+                &format!(
+                    "p2={}",
+                    repo_relative(&repo, &fixtures.legal_move_first_entry)
+                ),
+            ],
+        );
+
+        let match_dir = output_dir.join("reversi-rust-wasm");
+        let summary = read_summary(match_dir.join("result-summary.json"));
+        assert_eq!(summary.status, "completed");
+
+        let exported = read_exported_snapshot(match_dir.join("exported-snapshot.json"));
+        let public_state = exported.public_state.expect("public state");
+        assert!(public_state.completed);
+    }
+
+    #[test]
+    #[ignore = "requires pinned tagged arena-runner install"]
     fn tagged_runner_replays_both_scripted_completion_lines() {
         let repo = repo_root();
         let runner = runner_bin();
         let lines = load_script_lines(&repo);
+        let fixtures = build_fixtures(&repo);
 
         for (index, line) in lines.iter().enumerate() {
             let fixture_dir = prepare_fixture_dir(&repo);
             let output_dir = fixture_dir.join(format!("artifacts-scripted-{}", index + 1));
             let manifest_path = write_game_master_manifest(&fixture_dir, &repo);
             let (black_moves, white_moves) = split_moves(line);
-            let p1_entry =
-                write_scripted_player_manifest(&fixture_dir, &repo, "black", &black_moves);
-            let p2_entry =
-                write_scripted_player_manifest(&fixture_dir, &repo, "white", &white_moves);
+            let p1_entry = write_scripted_player_manifest(
+                &fixture_dir,
+                &fixtures.scripted_player_entry,
+                "black",
+                &black_moves,
+            );
+            let p2_entry = write_scripted_player_manifest(
+                &fixture_dir,
+                &fixtures.scripted_player_entry,
+                "white",
+                &white_moves,
+            );
 
             run_runner(
                 &runner,
@@ -150,10 +201,16 @@ mod tests {
     fn illegal_pass_with_legal_move_causes_immediate_loss() {
         let repo = repo_root();
         let runner = runner_bin();
+        let fixtures = build_fixtures(&repo);
         let fixture_dir = prepare_fixture_dir(&repo);
         let output_dir = fixture_dir.join("artifacts-illegal-pass");
         let manifest_path = write_game_master_manifest(&fixture_dir, &repo);
-        let invalid_entry = write_scripted_player_manifest(&fixture_dir, &repo, "invalid", "pass");
+        let invalid_entry = write_scripted_player_manifest(
+            &fixture_dir,
+            &fixtures.scripted_player_entry,
+            "invalid",
+            "pass",
+        );
 
         run_runner(
             &runner,
@@ -172,7 +229,7 @@ mod tests {
                 "--player",
                 &format!(
                     "p2={}",
-                    repo_relative(&repo, &repo.join("target/debug/reversi-legal-move-first"))
+                    repo_relative(&repo, &fixtures.legal_move_first_entry)
                 ),
             ],
         );
@@ -215,13 +272,14 @@ mod tests {
             .expect("ARENA_RUNNER_BIN must be set by make runner-e2e")
     }
 
+    struct FixtureBuilds {
+        legal_move_first_entry: PathBuf,
+        scripted_player_entry: PathBuf,
+        rust_wasm_entry: PathBuf,
+    }
+
     fn prepare_fixture_dir(repo: &Path) -> PathBuf {
-        static BUILD_ONCE: OnceLock<()> = OnceLock::new();
-        BUILD_ONCE.get_or_init(|| {
-            build_binary(repo, "reversi-gamemaster");
-            build_binary(repo, "reversi-legal-move-first");
-            build_binary(repo, "reversi-scripted-player");
-        });
+        build_fixtures(repo);
         let root = repo.join(format!(
             ".tmp-reversi-runner-{}",
             std::time::SystemTime::now()
@@ -233,8 +291,26 @@ mod tests {
         root
     }
 
+    fn build_fixtures(repo: &Path) -> &'static FixtureBuilds {
+        static BUILD_ONCE: OnceLock<FixtureBuilds> = OnceLock::new();
+        BUILD_ONCE.get_or_init(|| {
+            build_binary(repo, "reversi-gamemaster");
+            build_binary(repo, "reversi-legal-move-first");
+            build_binary(repo, "reversi-scripted-player");
+            let legal_move_first_entry = repo.join("target/debug/reversi-legal-move-first");
+            let scripted_player_entry = repo.join("target/debug/reversi-scripted-player");
+            let rust_wasm_entry = build_rust_wasm_fixture(repo);
+
+            FixtureBuilds {
+                legal_move_first_entry,
+                scripted_player_entry,
+                rust_wasm_entry,
+            }
+        })
+    }
+
     fn build_binary(repo: &Path, bin: &str) {
-        let output = Command::new("cargo")
+        let output = cargo_command(repo)
             .current_dir(repo)
             .args(["build", "--bin", bin])
             .output()
@@ -247,6 +323,67 @@ mod tests {
                 String::from_utf8_lossy(&output.stderr)
             );
         }
+    }
+
+    fn build_rust_wasm_fixture(repo: &Path) -> PathBuf {
+        let output = cargo_command(repo)
+            .current_dir(repo)
+            .args([
+                "build",
+                "--target",
+                "wasm32-wasip1",
+                "-p",
+                "reversi-rust-reference-player",
+                "--bin",
+                "reversi-rust-reference-player",
+            ])
+            .output()
+            .expect("run cargo build for wasm player");
+        if !output.status.success() {
+            panic!(
+                "cargo build wasm player failed:\n{}\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+
+        let cache_dir = repo.join("target/reversi-fixtures/rust-reference-player");
+        fs::create_dir_all(&cache_dir).expect("create wasm fixture cache dir");
+        let module_path = cache_dir.join("reversi-rust-reference-player.wasm");
+        let built_module =
+            repo.join("target/wasm32-wasip1/debug/reversi-rust-reference-player.wasm");
+        fs::copy(&built_module, &module_path).expect("copy wasm module into cache");
+
+        let entry = cache_dir.join("reversi-rust-reference-player");
+        fs::write(&entry, b"cached wasm sidecar entry").expect("write wasm entry placeholder");
+        let manifest = serde_json::json!({
+            "ai_id": "rust-reference",
+            "protocol": {
+                "transport": "stdio-jsonrpc-ndjson",
+                "game_id": "reversi",
+                "game_version": "1.0.0",
+                "ruleset_version": "standard"
+            },
+            "runtime": {
+                "kind": "wasm-wasi",
+                "module": "./reversi-rust-reference-player.wasm",
+                "args": ["./reversi-rust-reference-player.wasm"],
+                "memory_limit_pages": 64
+            }
+        });
+        write_json(&entry.with_extension("arena.json"), &manifest);
+        entry
+    }
+
+    fn cargo_command(repo: &Path) -> Command {
+        let mut command = Command::new("cargo");
+        command.current_dir(repo);
+        command.env(
+            "CARGO_HOME",
+            env::var("CARGO_HOME")
+                .unwrap_or_else(|_| "/tmp/reversi-ai-arena-cargo-home".to_string()),
+        );
+        command
     }
 
     fn write_game_master_manifest(fixture_dir: &Path, repo: &Path) -> PathBuf {
@@ -268,7 +405,7 @@ mod tests {
 
     fn write_scripted_player_manifest(
         fixture_dir: &Path,
-        repo: &Path,
+        scripted_player_entry: &Path,
         name: &str,
         moves: &str,
     ) -> PathBuf {
@@ -284,7 +421,7 @@ mod tests {
             },
             "runtime": {
                 "kind": "local-subprocess",
-                "command": [repo.join("target/debug/reversi-scripted-player").display().to_string(), "--moves", moves]
+                "command": [scripted_player_entry.display().to_string(), "--moves", moves]
             }
         });
         write_json(&entry.with_extension("arena.json"), &manifest);

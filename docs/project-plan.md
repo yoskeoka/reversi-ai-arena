@@ -138,8 +138,8 @@ tools that are needed to operate Reversi as a registered game.
       architecture for Reversi as an `ai-arena` game.
 - [x] Phase 1: Implement the Rust game master, verify it through
       `arena-runner`, and keep that path green in CI.
-- [ ] Phase 2: Implement the Rust AI-player mainline and add a lightweight Go
-      reference bot for samples and verification support.
+- [x] Phase 2: Implement the Rust AI-player mainline and keep any Go reference
+      support optional and lightweight for samples or verification helpers.
 - [ ] Phase 3: Build a replay visualizer that reads exported runner artifacts
       and replays completed matches with Phaser-rendered game screens.
 - [ ] Phase 4: Integrate a real-time watcher after the platform exposes the

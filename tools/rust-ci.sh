@@ -22,7 +22,7 @@ case "$cmd" in
         cargo test --workspace
         ;;
     wasm)
-        cargo build --target wasm32-unknown-unknown -p reversi-rust-reference-player
+        cargo build --target wasm32-wasip1 -p reversi-rust-reference-player --bin reversi-rust-reference-player
         ;;
     e2e)
         cache_root=/tmp/reversi-ai-arena-go

@@ -1,14 +1,27 @@
-//! Rust reference-player protocol helpers for the Reversi player surface.
+//! Rust reference-player protocol helpers and heuristic move selection.
 
 use aiarena_protocol::{
     Request, Response, Transport,
     player::{GameOverResult, InitResult, Runtime, SidecarManifest, SidecarProtocol},
 };
 use reversi_game::{
-    Action, ActionKind, GAME_ID, GAME_VERSION, LegalActionHint, RULESET_VERSION,
-    ReversiPlayerGameOverParams, ReversiPlayerInitParams, ReversiPlayerTurnParams,
-    ReversiPlayerTurnResult,
+    Action, ActionKind, Disc, GAME_ID, GAME_VERSION, LegalActionHint, PlayerColor, Position,
+    RULESET_VERSION, ReversiPlayerGameOverParams, ReversiPlayerInitParams, ReversiPlayerTurnParams,
+    ReversiPlayerTurnResult, VisibleState, engine::BOARD_SIZE, engine::MatchState,
 };
+
+type BoardCoordinate = (usize, usize);
+type CornerAdjacency = (BoardCoordinate, &'static [BoardCoordinate]);
+
+const CORNERS: &[(usize, usize)] = &[(0, 0), (0, 7), (7, 0), (7, 7)];
+const CORNER_ADJACENT: &[CornerAdjacency] = &[
+    ((0, 0), &[(0, 1), (1, 0), (1, 1)]),
+    ((0, 7), &[(0, 6), (1, 7), (1, 6)]),
+    ((7, 0), &[(6, 0), (7, 1), (6, 1)]),
+    ((7, 7), &[(6, 7), (7, 6), (6, 6)]),
+];
+const EDGE_START: usize = 1;
+const EDGE_END: usize = BOARD_SIZE - 1;
 
 /// Returns a stable placeholder name for the mainline Rust player surface.
 pub fn player_name() -> &'static str {
@@ -69,20 +82,216 @@ pub fn game_over_ack_response(id: &str) -> Result<Response, serde_json::Error> {
     Response::success(id, &GameOverResult::ack())
 }
 
-/// Returns a deterministic placeholder action for the current reference player.
-pub fn choose_placeholder_action(
-    _state: &reversi_game::VisibleState,
-    hint: &LegalActionHint,
-) -> Action {
-    match hint.legal_actions.first().copied() {
-        Some(position) => Action {
-            kind: ActionKind::Place,
-            position: Some(position),
-        },
-        None => Action {
+/// Chooses a deterministic action from the current visible board and legal hints.
+pub fn choose_action(state: &VisibleState, hint: &LegalActionHint) -> Action {
+    if hint.legal_actions.is_empty() {
+        return Action {
             kind: ActionKind::Pass,
             position: None,
-        },
+        };
+    }
+
+    let current_player = state.current_player.unwrap_or(PlayerColor::Black);
+    let search_depth: u8 = if count_empty_cells(&state.board) <= 12 {
+        3
+    } else {
+        2
+    };
+
+    let mut ordered_actions = hint.legal_actions.clone();
+    ordered_actions.sort_by_key(|position| (position.row, position.col));
+
+    let mut best_position = ordered_actions[0];
+    let mut best_score = i32::MIN;
+    for position in ordered_actions {
+        let candidate_state = simulate_action(state, current_player, position);
+        let score = minimax(
+            &candidate_state,
+            search_depth.saturating_sub(1),
+            current_player,
+        );
+        if score > best_score
+            || (score == best_score
+                && (position.row, position.col) < (best_position.row, best_position.col))
+        {
+            best_score = score;
+            best_position = position;
+        }
+    }
+
+    Action {
+        kind: ActionKind::Place,
+        position: Some(best_position),
+    }
+}
+
+fn simulate_action(
+    state: &VisibleState,
+    _current_player: PlayerColor,
+    position: Position,
+) -> MatchState {
+    let mut match_state = match_state_from_visible_state(state);
+    match_state
+        .apply_valid_action(&Action {
+            kind: ActionKind::Place,
+            position: Some(position),
+        })
+        .unwrap_or_else(|err| panic!("failed to simulate legal action {position:?}: {err}"));
+    match_state
+}
+
+fn minimax(state: &MatchState, depth: u8, root_player: PlayerColor) -> i32 {
+    if depth == 0 || state.completed || state.current_player.is_none() {
+        return evaluate_state(state, root_player);
+    }
+
+    let current_player = state.current_player.expect("current player");
+    let legal_actions = state.legal_actions_for(current_player);
+    if legal_actions.is_empty() {
+        let mut passed = state.clone();
+        passed
+            .apply_valid_action(&Action {
+                kind: ActionKind::Pass,
+                position: None,
+            })
+            .expect("forced pass");
+        return minimax(&passed, depth.saturating_sub(1), root_player);
+    }
+
+    let mut ordered_actions = legal_actions;
+    ordered_actions.sort_by_key(|position| (position.row, position.col));
+
+    let mut best = if current_player == root_player {
+        i32::MIN
+    } else {
+        i32::MAX
+    };
+    for position in ordered_actions {
+        let mut next = state.clone();
+        next.apply_valid_action(&Action {
+            kind: ActionKind::Place,
+            position: Some(position),
+        })
+        .expect("legal action");
+        let score = minimax(&next, depth.saturating_sub(1), root_player);
+        if current_player == root_player {
+            best = best.max(score);
+        } else {
+            best = best.min(score);
+        }
+    }
+    best
+}
+
+fn evaluate_state(state: &MatchState, root_player: PlayerColor) -> i32 {
+    let opponent = root_player.opponent();
+    let own_disc = root_player.disc();
+    let opponent_disc = opponent.disc();
+
+    let corner_diff = count_corners(state, own_disc) - count_corners(state, opponent_disc);
+    let mobility_diff = state.legal_actions_for(root_player).len() as i32
+        - state.legal_actions_for(opponent).len() as i32;
+    let edge_diff = count_edges(state, own_disc) - count_edges(state, opponent_disc);
+    let disc_diff = count_discs(state, own_disc) - count_discs(state, opponent_disc);
+    let corner_risk =
+        corner_adjacent_penalty(state, own_disc) - corner_adjacent_penalty(state, opponent_disc);
+    let parity = if count_empty_on_state(state).is_multiple_of(2) {
+        -1
+    } else {
+        1
+    };
+    let endgame_weight = if count_empty_on_state(state) <= 10 {
+        3
+    } else {
+        1
+    };
+
+    corner_diff * 100 + mobility_diff * 15 + edge_diff * 8 + disc_diff * endgame_weight
+        - corner_risk * 12
+        + parity * 4
+}
+
+fn count_corners(state: &MatchState, disc: Disc) -> i32 {
+    CORNERS
+        .iter()
+        .filter(|&&(row, col)| state.board[row][col] == disc)
+        .count() as i32
+}
+
+fn count_edges(state: &MatchState, disc: Disc) -> i32 {
+    let mut count = 0i32;
+    for index in EDGE_START..EDGE_END {
+        if state.board[0][index] == disc {
+            count += 1;
+        }
+        if state.board[BOARD_SIZE - 1][index] == disc {
+            count += 1;
+        }
+        if state.board[index][0] == disc {
+            count += 1;
+        }
+        if state.board[index][BOARD_SIZE - 1] == disc {
+            count += 1;
+        }
+    }
+    count
+}
+
+fn count_discs(state: &MatchState, disc: Disc) -> i32 {
+    state
+        .board
+        .iter()
+        .flatten()
+        .filter(|candidate| **candidate == disc)
+        .count() as i32
+}
+
+fn corner_adjacent_penalty(state: &MatchState, disc: Disc) -> i32 {
+    let mut penalty = 0i32;
+    for &((corner_row, corner_col), adjacent) in CORNER_ADJACENT {
+        if state.board[corner_row][corner_col] != Disc::Empty {
+            continue;
+        }
+        penalty += adjacent
+            .iter()
+            .filter(|&&(row, col)| state.board[row][col] == disc)
+            .count() as i32;
+    }
+    penalty
+}
+
+fn count_empty_cells(board: &[Vec<Disc>]) -> usize {
+    board
+        .iter()
+        .flatten()
+        .filter(|disc| **disc == Disc::Empty)
+        .count()
+}
+
+fn count_empty_on_state(state: &MatchState) -> usize {
+    state
+        .board
+        .iter()
+        .flatten()
+        .filter(|disc| **disc == Disc::Empty)
+        .count()
+}
+
+fn match_state_from_visible_state(state: &VisibleState) -> MatchState {
+    let mut board = [[Disc::Empty; BOARD_SIZE]; BOARD_SIZE];
+    for (row_index, row) in state.board.iter().enumerate().take(BOARD_SIZE) {
+        for (col_index, disc) in row.iter().enumerate().take(BOARD_SIZE) {
+            board[row_index][col_index] = *disc;
+        }
+    }
+
+    MatchState {
+        board,
+        current_player: state.current_player,
+        turn: state.turn as i32,
+        consecutive_passes: 0,
+        completed: state.current_player.is_none(),
+        winner_by_forfeit: None,
     }
 }
 
@@ -93,8 +302,7 @@ mod tests {
         match_response_id,
         player::{METHOD_GAME_OVER, METHOD_INIT, METHOD_TURN},
     };
-    use reversi_game::{InitState, Position};
-    use reversi_game::{PlayerColor, ScoreSummary, VisibleState};
+    use reversi_game::{InitState, ScoreSummary};
 
     #[test]
     fn manifest_uses_expected_transport_contract() {
@@ -109,7 +317,7 @@ mod tests {
             turn: 7,
             visible_state: VisibleState {
                 turn: 7,
-                board: vec![vec![reversi_game::Disc::Empty; 2]; 2],
+                board: vec![vec![reversi_game::Disc::Empty; 8]; 8],
                 current_player: Some(PlayerColor::Black),
                 legal_actions: vec![Position { row: 0, col: 0 }],
                 scores: ScoreSummary { black: 2, white: 2 },
@@ -126,20 +334,20 @@ mod tests {
     }
 
     #[test]
-    fn placeholder_action_prefers_first_legal_move() {
-        let action = choose_placeholder_action(
-            &reversi_game::sample_visible_state(),
-            &LegalActionHint {
-                legal_actions: vec![Position { row: 2, col: 3 }],
-            },
-        );
+    fn choose_action_prefers_corner_over_interior_move() {
+        let state = strategic_corner_test_state();
+        let hint = LegalActionHint {
+            legal_actions: match_state_from_visible_state(&state)
+                .legal_actions_for(PlayerColor::Black),
+        };
+        let action = choose_action(&state, &hint);
         assert_eq!(action.kind, ActionKind::Place);
-        assert_eq!(action.position.expect("position").col, 3);
+        assert_eq!(action.position, Some(Position { row: 0, col: 0 }));
     }
 
     #[test]
-    fn placeholder_action_passes_only_when_no_legal_action_exists() {
-        let action = choose_placeholder_action(
+    fn choose_action_passes_only_when_no_legal_action_exists() {
+        let action = choose_action(
             &reversi_game::sample_visible_state(),
             &LegalActionHint {
                 legal_actions: Vec::new(),
@@ -188,5 +396,26 @@ mod tests {
 
         let decoded = decode_init_request(&request).expect("decode");
         assert_eq!(decoded.state.board_size, 8);
+    }
+
+    fn strategic_corner_test_state() -> VisibleState {
+        let mut board = vec![vec![Disc::Empty; 8]; 8];
+        board[0][1] = Disc::White;
+        board[0][2] = Disc::Black;
+        board[1][0] = Disc::White;
+        board[1][1] = Disc::White;
+        board[1][2] = Disc::White;
+        board[2][0] = Disc::Black;
+        board[2][2] = Disc::Black;
+        board[2][3] = Disc::White;
+        board[2][4] = Disc::Black;
+
+        VisibleState {
+            turn: 12,
+            board,
+            current_player: Some(PlayerColor::Black),
+            legal_actions: Vec::new(),
+            scores: ScoreSummary { black: 4, white: 4 },
+        }
     }
 }
