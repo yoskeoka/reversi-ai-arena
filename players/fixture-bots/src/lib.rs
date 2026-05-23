@@ -89,8 +89,7 @@ pub fn parse_script_tokens(moves: &str) -> Result<Vec<ScriptToken>, String> {
     let mut index = 0;
     let mut tokens = Vec::new();
     while index < bytes.len() {
-        let remaining = &moves[index..];
-        if remaining.starts_with("pass") {
+        if bytes[index..].starts_with(b"pass") {
             tokens.push(ScriptToken::Pass);
             index += 4;
             continue;
@@ -98,7 +97,8 @@ pub fn parse_script_tokens(moves: &str) -> Result<Vec<ScriptToken>, String> {
         if index + 2 > bytes.len() {
             return Err(format!("trailing move fragment at byte {}", index));
         }
-        let token = &moves[index..index + 2];
+        let token = std::str::from_utf8(&bytes[index..index + 2])
+            .map_err(|_| format!("non-ascii move token at byte {}", index))?;
         tokens.push(ScriptToken::Move(parse_position(token)?));
         index += 2;
     }
@@ -106,17 +106,17 @@ pub fn parse_script_tokens(moves: &str) -> Result<Vec<ScriptToken>, String> {
 }
 
 fn parse_position(token: &str) -> Result<Position, String> {
-    let chars: Vec<char> = token.chars().collect();
-    if chars.len() != 2 {
+    let bytes = token.as_bytes();
+    if bytes.len() != 2 {
         return Err(format!("invalid move token {}", token));
     }
-    let col = match chars[0] {
-        'a'..='h' => chars[0] as u8 - b'a',
-        _ => return Err(format!("invalid file {}", chars[0])),
+    let col = match bytes[0] {
+        b'a'..=b'h' => bytes[0] - b'a',
+        _ => return Err(format!("invalid file {}", token)),
     };
-    let row = match chars[1] {
-        '1'..='8' => chars[1] as u8 - b'1',
-        _ => return Err(format!("invalid rank {}", chars[1])),
+    let row = match bytes[1] {
+        b'1'..=b'8' => bytes[1] - b'1',
+        _ => return Err(format!("invalid rank {}", token)),
     };
     Ok(Position { row, col })
 }

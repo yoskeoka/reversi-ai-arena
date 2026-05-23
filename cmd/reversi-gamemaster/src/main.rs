@@ -13,6 +13,11 @@ use reversi_game::{
     gamemaster::{ReversiGameMaster, SnapshotState},
 };
 
+struct RequestOutcome {
+    response: Option<Response>,
+    shutdown: bool,
+}
+
 fn main() {
     if let Err(err) = run() {
         eprintln!("{err}");
@@ -28,39 +33,42 @@ fn run() -> Result<(), String> {
     let mut game_master: Option<ReversiGameMaster> = None;
 
     while let Some(request) = decoder.decode_request().map_err(|err| err.to_string())? {
-        let response = handle_request(&mut game_master, request);
-        encoder.encode(&response).map_err(|err| err.to_string())?;
-        if response.id == "__shutdown__" {
+        let outcome = handle_request(&mut game_master, request);
+        if let Some(response) = outcome.response {
+            encoder.encode(&response).map_err(|err| err.to_string())?;
+        }
+        if outcome.shutdown {
             break;
         }
     }
     Ok(())
 }
 
-fn handle_request(game_master: &mut Option<ReversiGameMaster>, request: Request) -> Response {
-    let request_id = request.id.clone().unwrap_or_default();
+fn handle_request(game_master: &mut Option<ReversiGameMaster>, request: Request) -> RequestOutcome {
+    let request_id = request.id.clone();
     let result = match request.method.as_str() {
         METHOD_METADATA => {
-            Response::success(&request_id, &game_metadata()).map_err(|err| err.to_string())
+            success_response(request_id.as_deref(), &game_metadata()).map_err(|err| err.to_string())
         }
         METHOD_INITIALIZE_MATCH => {
             let params = request
-                .parse_params::<gamemaster::InitializeMatchParams<SnapshotState>>()
+                .parse_params::<gamemaster::InitializeMatchParams<
+                    SnapshotState,
+                    reversi_game::VisibleState,
+                    reversi_game::Action,
+                >>()
                 .map_err(|err| err.to_string());
             match params {
                 Ok(params) => {
-                    let resume_state = params
-                        .resume_snapshot
-                        .and_then(|snapshot| snapshot.game_state);
-                    match ReversiGameMaster::initialize(
-                        "reversi-match",
-                        params.players,
-                        resume_state,
-                    ) {
+                    let (match_id, resume_snapshot) = match params.resume_snapshot {
+                        Some(snapshot) => (snapshot.match_id.clone(), Some(snapshot)),
+                        None => ("reversi-match".to_string(), None),
+                    };
+                    match ReversiGameMaster::initialize(match_id, params.players, resume_snapshot) {
                         Ok((master, init_state)) => {
                             *game_master = Some(master);
-                            Response::success(
-                                &request_id,
+                            success_response(
+                                request_id.as_deref(),
                                 &gamemaster::InitializeMatchResult { init_state },
                             )
                             .map_err(|err| err.to_string())
@@ -73,7 +81,7 @@ fn handle_request(game_master: &mut Option<ReversiGameMaster>, request: Request)
         }
         METHOD_NEXT_DECISION_STEP => with_master(game_master, |master| {
             let step = master.next_decision_step();
-            Response::success(&request_id, &step).map_err(|err| err.to_string())
+            success_response(request_id.as_deref(), &step).map_err(|err| err.to_string())
         }),
         METHOD_NORMALIZE_ACTION => with_master(game_master, |master| {
             let params = request
@@ -84,7 +92,7 @@ fn handle_request(game_master: &mut Option<ReversiGameMaster>, request: Request)
                 >>()
                 .map_err(|err| err.to_string())?;
             let normalized = master.normalize_action(&params.request, &params.action_status);
-            Response::success(&request_id, &normalized).map_err(|err| err.to_string())
+            success_response(request_id.as_deref(), &normalized).map_err(|err| err.to_string())
         }),
         METHOD_APPLY_DECISION_RESULTS => with_master(game_master, |master| {
             let params = request
@@ -95,52 +103,73 @@ fn handle_request(game_master: &mut Option<ReversiGameMaster>, request: Request)
                 >>()
                 .map_err(|err| err.to_string())?;
             master.apply_decision_results(&params.action_statuses)?;
-            Response::success(&request_id, &serde_json::json!({ "ok": true }))
+            success_response(request_id.as_deref(), &serde_json::json!({ "ok": true }))
                 .map_err(|err| err.to_string())
         }),
         METHOD_CURRENT_SNAPSHOT => with_master(game_master, |master| {
-            Response::success(&request_id, &master.current_snapshot())
+            success_response(request_id.as_deref(), &master.current_snapshot())
                 .map_err(|err| err.to_string())
         }),
         METHOD_CURRENT_EXPORTED_SNAPSHOT => with_master(game_master, |master| {
-            Response::success(&request_id, &master.current_exported_snapshot())
+            success_response(request_id.as_deref(), &master.current_exported_snapshot())
                 .map_err(|err| err.to_string())
         }),
         METHOD_CURRENT_RESULT => with_master(game_master, |master| {
-            Response::success(&request_id, &master.current_result()).map_err(|err| err.to_string())
+            success_response(request_id.as_deref(), &master.current_result())
+                .map_err(|err| err.to_string())
         }),
         METHOD_SHUTDOWN => {
             *game_master = None;
-            Ok(Response {
-                jsonrpc: aiarena_protocol::JSONRPC_VERSION.to_string(),
-                id: "__shutdown__".to_string(),
-                result: Some(serde_json::json!({ "ok": true })),
-                error: None,
-            })
+            success_response(request_id.as_deref(), &serde_json::json!({ "ok": true }))
+                .map_err(|err| err.to_string())
         }
         _ => Err(format!("unsupported method {}", request.method)),
     };
 
     match result {
-        Ok(response) => response,
-        Err(message) => Response {
-            jsonrpc: aiarena_protocol::JSONRPC_VERSION.to_string(),
-            id: request_id,
-            result: None,
-            error: Some(ErrorObject {
-                code: -32000,
-                message,
-            }),
+        Ok(response) => RequestOutcome {
+            response,
+            shutdown: request.method == METHOD_SHUTDOWN,
+        },
+        Err(message) => RequestOutcome {
+            response: error_response(request_id.as_deref(), message),
+            shutdown: false,
         },
     }
 }
 
-fn with_master<F>(game_master: &mut Option<ReversiGameMaster>, f: F) -> Result<Response, String>
+fn with_master<F>(
+    game_master: &mut Option<ReversiGameMaster>,
+    f: F,
+) -> Result<Option<Response>, String>
 where
-    F: FnOnce(&mut ReversiGameMaster) -> Result<Response, String>,
+    F: FnOnce(&mut ReversiGameMaster) -> Result<Option<Response>, String>,
 {
     let Some(master) = game_master.as_mut() else {
         return Err("match is not initialized".to_string());
     };
     f(master)
+}
+
+fn success_response<T: serde::Serialize>(
+    request_id: Option<&str>,
+    result: &T,
+) -> Result<Option<Response>, serde_json::Error> {
+    match request_id {
+        Some(id) => Response::success(id, result).map(Some),
+        None => Ok(None),
+    }
+}
+
+fn error_response(request_id: Option<&str>, message: String) -> Option<Response> {
+    let id = request_id?;
+    Some(Response {
+        jsonrpc: aiarena_protocol::JSONRPC_VERSION.to_string(),
+        id: id.to_string(),
+        result: None,
+        error: Some(ErrorObject {
+            code: -32000,
+            message,
+        }),
+    })
 }

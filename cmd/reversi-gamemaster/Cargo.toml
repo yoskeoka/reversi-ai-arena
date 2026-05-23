@@ -7,4 +7,5 @@ publish = false
 [dependencies]
 aiarena-protocol = { path = "../../internal/aiarena-protocol" }
 reversi-game = { path = "../../games/reversi" }
+serde = "1.0"
 serde_json = "1.0"

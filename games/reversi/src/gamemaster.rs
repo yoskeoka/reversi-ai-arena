@@ -65,16 +65,21 @@ impl ReversiGameMaster {
     pub fn initialize(
         match_id: impl Into<String>,
         players: Vec<gamemaster::Player>,
-        resume_snapshot: Option<SnapshotState>,
+        resume_snapshot: Option<
+            gamemaster::Snapshot<SnapshotState, crate::VisibleState, crate::Action>,
+        >,
     ) -> Result<(Self, ReversiGameMasterInitState), String> {
         if players.len() != 2 {
             return Err("reversi requires exactly two players".to_string());
         }
+        let match_id = match_id.into();
         let mut player_colors = BTreeMap::new();
         player_colors.insert(players[0].player_id.clone(), PlayerColor::Black);
         player_colors.insert(players[1].player_id.clone(), PlayerColor::White);
 
         let state = resume_snapshot
+            .as_ref()
+            .and_then(|snapshot| snapshot.game_state.clone())
             .map(MatchState::from)
             .unwrap_or_else(MatchState::new_standard);
         let mut per_player = BTreeMap::new();
@@ -96,6 +101,17 @@ impl ReversiGameMaster {
         let mut last_action_statuses = BTreeMap::new();
         let mut stderr_bytes = BTreeMap::new();
         for player in &players {
+            if let Some(snapshot) = resume_snapshot
+                .as_ref()
+                .and_then(|snapshot| snapshot.per_player.get(&player.player_id))
+            {
+                last_action_statuses.insert(
+                    player.player_id.clone(),
+                    snapshot.last_action_status.clone(),
+                );
+                stderr_bytes.insert(player.player_id.clone(), snapshot.stderr_bytes);
+                continue;
+            }
             last_action_statuses.insert(
                 player.player_id.clone(),
                 ReversiActionStatus {
@@ -110,7 +126,7 @@ impl ReversiGameMaster {
 
         Ok((
             Self {
-                match_id: match_id.into(),
+                match_id,
                 players,
                 player_colors,
                 state,

@@ -325,10 +325,16 @@ mod tests {
         let mut black = String::new();
         let mut white = String::new();
         let bytes = line.as_bytes();
+        assert!(
+            bytes.len().is_multiple_of(2),
+            "scripted line must contain an even number of bytes: {}",
+            line
+        );
         let mut index = 0usize;
         let mut turn = 0usize;
         while index < bytes.len() {
-            let token = &line[index..index + 2];
+            let token = std::str::from_utf8(&bytes[index..index + 2])
+                .unwrap_or_else(|_| panic!("scripted line contains non-ascii token: {}", line));
             if turn.is_multiple_of(2) {
                 black.push_str(token);
             } else {

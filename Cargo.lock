@@ -46,7 +46,6 @@ version = "0.1.0"
 dependencies = [
  "aiarena-protocol",
  "reversi-game",
- "serde_json",
 ]
 
 [[package]]
@@ -64,6 +63,7 @@ version = "0.1.0"
 dependencies = [
  "aiarena-protocol",
  "reversi-game",
+ "serde",
  "serde_json",
 ]
 
