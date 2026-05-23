@@ -23,6 +23,12 @@ const CORNER_ADJACENT: &[CornerAdjacency] = &[
 const EDGE_START: usize = 1;
 const EDGE_END: usize = BOARD_SIZE - 1;
 
+#[derive(Debug, Clone)]
+struct BelievedTurn {
+    current_player: PlayerColor,
+    legal_actions: Vec<Position>,
+}
+
 /// Returns a stable placeholder name for the mainline Rust player surface.
 pub fn player_name() -> &'static str {
     "rust-reference"
@@ -84,31 +90,31 @@ pub fn game_over_ack_response(id: &str) -> Result<Response, serde_json::Error> {
 
 /// Chooses a deterministic action from the current visible board and legal hints.
 pub fn choose_action(state: &VisibleState, hint: &LegalActionHint) -> Action {
-    if hint.legal_actions.is_empty() {
+    let believed_turn = infer_believed_turn(state, hint);
+    if believed_turn.legal_actions.is_empty() {
         return Action {
             kind: ActionKind::Pass,
             position: None,
         };
     }
 
-    let current_player = state.current_player.unwrap_or(PlayerColor::Black);
     let search_depth: u8 = if count_empty_cells(&state.board) <= 12 {
         3
     } else {
         2
     };
 
-    let mut ordered_actions = hint.legal_actions.clone();
+    let mut ordered_actions = believed_turn.legal_actions.clone();
     ordered_actions.sort_by_key(|position| (position.row, position.col));
 
     let mut best_position = ordered_actions[0];
     let mut best_score = i32::MIN;
     for position in ordered_actions {
-        let candidate_state = simulate_action(state, current_player, position);
+        let candidate_state = simulate_action(state, believed_turn.current_player, position);
         let score = minimax(
             &candidate_state,
             search_depth.saturating_sub(1),
-            current_player,
+            believed_turn.current_player,
         );
         if score > best_score
             || (score == best_score
@@ -125,18 +131,69 @@ pub fn choose_action(state: &VisibleState, hint: &LegalActionHint) -> Action {
     }
 }
 
+fn infer_believed_turn(state: &VisibleState, hint: &LegalActionHint) -> BelievedTurn {
+    let candidates = [
+        build_turn_candidate(state, hint, PlayerColor::Black),
+        build_turn_candidate(state, hint, PlayerColor::White),
+    ];
+    let mut preferred_index = 0usize;
+    if candidates[1].score > candidates[0].score
+        || (candidates[1].score == candidates[0].score
+            && state.current_player == Some(PlayerColor::White))
+    {
+        preferred_index = 1;
+    }
+
+    BelievedTurn {
+        current_player: candidates[preferred_index].current_player,
+        legal_actions: candidates[preferred_index].legal_actions.clone(),
+    }
+}
+
+#[derive(Debug, Clone)]
+struct TurnCandidate {
+    current_player: PlayerColor,
+    legal_actions: Vec<Position>,
+    score: i32,
+}
+
+fn build_turn_candidate(
+    state: &VisibleState,
+    hint: &LegalActionHint,
+    current_player: PlayerColor,
+) -> TurnCandidate {
+    let legal_actions = legal_actions_for_color(state, current_player);
+    let mut score = 0i32;
+    if state.current_player == Some(current_player) {
+        score += 40;
+    }
+    score += overlap_score(&legal_actions, &state.legal_actions) * 20;
+    score += overlap_score(&legal_actions, &hint.legal_actions) * 20;
+    score -= mismatch_score(&legal_actions, &state.legal_actions) * 5;
+    score -= mismatch_score(&legal_actions, &hint.legal_actions) * 5;
+    if !legal_actions.is_empty() {
+        score += 3;
+    }
+
+    TurnCandidate {
+        current_player,
+        legal_actions,
+        score,
+    }
+}
+
 fn simulate_action(
     state: &VisibleState,
-    _current_player: PlayerColor,
+    current_player: PlayerColor,
     position: Position,
 ) -> MatchState {
     let mut match_state = match_state_from_visible_state(state);
-    match_state
-        .apply_valid_action(&Action {
-            kind: ActionKind::Place,
-            position: Some(position),
-        })
-        .unwrap_or_else(|err| panic!("failed to simulate legal action {position:?}: {err}"));
+    match_state.current_player = Some(current_player);
+    match_state.completed = false;
+    let _ = match_state.apply_valid_action(&Action {
+        kind: ActionKind::Place,
+        position: Some(position),
+    });
     match_state
 }
 
@@ -277,6 +334,26 @@ fn count_empty_on_state(state: &MatchState) -> usize {
         .count()
 }
 
+fn legal_actions_for_color(state: &VisibleState, current_player: PlayerColor) -> Vec<Position> {
+    let mut match_state = match_state_from_visible_state(state);
+    match_state.current_player = Some(current_player);
+    match_state.completed = false;
+    match_state.legal_actions_for(current_player)
+}
+
+fn overlap_score(left: &[Position], right: &[Position]) -> i32 {
+    left.iter()
+        .filter(|position| right.contains(position))
+        .count() as i32
+}
+
+fn mismatch_score(left: &[Position], right: &[Position]) -> i32 {
+    right
+        .iter()
+        .filter(|position| !left.contains(position))
+        .count() as i32
+}
+
 fn match_state_from_visible_state(state: &VisibleState) -> MatchState {
     let mut board = [[Disc::Empty; BOARD_SIZE]; BOARD_SIZE];
     for (row_index, row) in state.board.iter().enumerate().take(BOARD_SIZE) {
@@ -346,15 +423,57 @@ mod tests {
     }
 
     #[test]
-    fn choose_action_passes_only_when_no_legal_action_exists() {
+    fn choose_action_passes_only_when_no_believed_legal_action_exists() {
+        let mut state = reversi_game::sample_visible_state();
+        state.board = vec![vec![Disc::Black; 8]; 8];
+        state.current_player = None;
+        state.legal_actions = Vec::new();
+        state.scores = ScoreSummary {
+            black: 64,
+            white: 0,
+        };
         let action = choose_action(
-            &reversi_game::sample_visible_state(),
+            &state,
             &LegalActionHint {
                 legal_actions: Vec::new(),
             },
         );
         assert_eq!(action.kind, ActionKind::Pass);
         assert_eq!(action.position, None);
+    }
+
+    #[test]
+    fn choose_action_recovers_when_hint_is_empty_but_board_shows_legal_moves() {
+        let mut state = strategic_corner_test_state();
+        state.current_player = None;
+        state.legal_actions = vec![Position { row: 0, col: 0 }, Position { row: 3, col: 5 }];
+
+        let action = choose_action(
+            &state,
+            &LegalActionHint {
+                legal_actions: Vec::new(),
+            },
+        );
+
+        assert_eq!(action.kind, ActionKind::Place);
+        assert_eq!(action.position, Some(Position { row: 0, col: 0 }));
+    }
+
+    #[test]
+    fn choose_action_ignores_inconsistent_hint_and_uses_believed_legal_moves() {
+        let mut state = strategic_corner_test_state();
+        state.current_player = Some(PlayerColor::Black);
+        state.legal_actions = vec![Position { row: 0, col: 0 }, Position { row: 3, col: 5 }];
+
+        let action = choose_action(
+            &state,
+            &LegalActionHint {
+                legal_actions: vec![Position { row: 7, col: 7 }],
+            },
+        );
+
+        assert_eq!(action.kind, ActionKind::Place);
+        assert_eq!(action.position, Some(Position { row: 0, col: 0 }));
     }
 
     #[test]

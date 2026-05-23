@@ -33,6 +33,22 @@ consumer of the Reversi game and protocol crates while shipping through the
   times out, the game-master path is expected to treat that result as an
   immediate loss for the player.
 
+## Robustness On Inconsistent Turn Payloads
+
+- There is no separate Reversi-specific repair protocol for malformed JSON-RPC
+  turn messages beyond normal transport decode failure.
+- After a turn request has decoded successfully, the player must treat
+  `visible_state.current_player`, `visible_state.legal_actions`, and
+  `legal_action_hint.legal_actions` as potentially inconsistent fields rather
+  than as an all-or-nothing trusted bundle.
+- The player must not panic when those fields disagree.
+- If the decoded turn payload is internally inconsistent, the player should
+  reconstruct the legal move set it believes from the visible board and choose
+  the best action from that believed legal set.
+- If the player cannot justify any placement from the visible board, it may
+  fall back to `pass` as its own believed legal response, even though the game
+  master may later reject that action.
+
 ## Decision Quality Bar
 
 Phase 2 is not satisfied by a first-legal or scripted completion bot.
