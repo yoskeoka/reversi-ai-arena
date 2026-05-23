@@ -14,3 +14,6 @@ Phase 1 foundation adds:
 
 - `quality-gates.md`
 - `rust-protocol-compatibility.md`
+- `reversi-game-master.md`
+- `tagged-runner-consumption.md`
+- `verification-assets.md`

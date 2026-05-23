@@ -1,7 +1,10 @@
 [workspace]
 members = [
+  "cmd/reversi-gamemaster",
+  "e2e/reversi-runner",
   "games/reversi",
   "internal/aiarena-protocol",
+  "players/fixture-bots",
   "players/rust-reference",
 ]
 resolver = "2"

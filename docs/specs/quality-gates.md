@@ -16,6 +16,8 @@ Run these commands from the repository root:
 - `make rust-test`: run the workspace Rust test suite
 - `make wasm-check`: build the Rust reference player for
   `wasm32-unknown-unknown`
+- `make runner-e2e`: install the pinned tagged `arena-runner` and run the
+  manifest-backed Reversi end-to-end verification path
 - `make verify-rust`: run the required Rust verification path for this phase
 - `make verify-workflows`: run repository-local workflow lint checks
 
@@ -35,6 +37,8 @@ Run these commands from the repository root:
 - Full Rust-surface changes run the complete `make verify-rust` path.
 - Surface-local Rust changes may run narrower crate checks, but the Rust
   reference player lane must still include the WASM build check.
+- The tagged-runner Reversi E2E path must use the same pinned external runner
+  version in local verification and CI.
 
 ## WASM Readiness
 

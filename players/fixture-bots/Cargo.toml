@@ -1,0 +1,20 @@
+[package]
+name = "reversi-fixture-bots"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "reversi-legal-move-first"
+path = "src/bin/reversi_legal_move_first.rs"
+
+[[bin]]
+name = "reversi-scripted-player"
+path = "src/bin/reversi_scripted_player.rs"
+
+[dependencies]
+aiarena-protocol = { path = "../../internal/aiarena-protocol" }
+reversi-game = { path = "../../games/reversi" }

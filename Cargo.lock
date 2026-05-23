@@ -41,10 +41,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "reversi-fixture-bots"
+version = "0.1.0"
+dependencies = [
+ "aiarena-protocol",
+ "reversi-game",
+]
+
+[[package]]
 name = "reversi-game"
 version = "0.1.0"
 dependencies = [
  "aiarena-protocol",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "reversi-gamemaster"
+version = "0.1.0"
+dependencies = [
+ "aiarena-protocol",
+ "reversi-game",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "reversi-runner-e2e"
+version = "0.1.0"
+dependencies = [
  "serde",
  "serde_json",
 ]

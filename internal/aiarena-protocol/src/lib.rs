@@ -5,6 +5,7 @@ pub mod gamemaster;
 pub mod player;
 
 pub use common::{
-    DecodeError, Encoder, ErrorObject, GameMetadata, MetadataCompatibilityError, Request, Response,
-    Transport, major_version, match_response_id, metadata_compatible,
+    DecodeError, Decoder, Encoder, ErrorObject, GameMetadata, JSONRPC_VERSION,
+    MetadataCompatibilityError, Request, Response, Transport, major_version, match_response_id,
+    metadata_compatible,
 };
