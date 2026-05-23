@@ -136,7 +136,7 @@ tools that are needed to operate Reversi as a registered game.
 
 - [x] Phase 0: Fix the repository boundaries, language choices, and visualizer
       architecture for Reversi as an `ai-arena` game.
-- [ ] Phase 1: Implement the Rust game master, verify it through
+- [x] Phase 1: Implement the Rust game master, verify it through
       `arena-runner`, and keep that path green in CI.
 - [ ] Phase 2: Implement the Rust AI-player mainline and add a lightweight Go
       reference bot for samples and verification support.

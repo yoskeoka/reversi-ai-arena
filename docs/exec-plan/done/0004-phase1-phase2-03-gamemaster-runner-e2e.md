@@ -15,7 +15,7 @@ game path rather than a local-only rules prototype.
 
 - The game master is built in Rust.
 - `arena-runner` must be consumed as a versioned external host, installed from
-  `go install github.com/yoskeoka/ai-arena/cmd/arena-runner@v0.1.0`, then
+  `go install github.com/yoskeoka/ai-arena/cmd/arena-runner@v0.2.0`, then
   executed as the pinned binary on `PATH` during local and CI verification, not
   via a sibling checkout path.
 - The game master binary is built in this repository and then launched through
@@ -69,7 +69,7 @@ game path rather than a local-only rules prototype.
   - the binary entrypoint and its runner-facing contract
 - Add a tagged-runner consumption spec for this repository that fixes:
   - the `ai-arena` host version policy, starting with
-    `github.com/yoskeoka/ai-arena/cmd/arena-runner@v0.1.0`
+    `github.com/yoskeoka/ai-arena/cmd/arena-runner@v0.2.0`
   - the single local and CI invocation strategy: install the pinned binary, then
     invoke that installed `arena-runner`
   - the minimum fixture-player contract required for Phase 1 runner e2e
@@ -94,21 +94,21 @@ game path rather than a local-only rules prototype.
 
 ## Sub-tasks
 
-- [ ] Define the Phase 1 contract in specs before implementing the game master.
-- [ ] [parallel] Implement the Reversi core rule/state modules inside
+- [x] Define the Phase 1 contract in specs before implementing the game master.
+- [x] [parallel] Implement the Reversi core rule/state modules inside
       `games/reversi/`.
-- [ ] [parallel] Add the runnable game-master binary and protocol-crate
+- [x] [parallel] Add the runnable game-master binary and protocol-crate
       integration.
-- [ ] [parallel] Add the minimum Phase 1 fixture players:
+- [x] [parallel] Add the minimum Phase 1 fixture players:
       - a legal-move-first bot
       - a scripted bot that can replay fixed move sequences
-- [ ] [depends on: rule/state modules, game-master binary] Add tagged-runner e2e
+- [x] [depends on: rule/state modules, game-master binary] Add tagged-runner e2e
       tests and deterministic test fixtures.
-- [ ] [depends on: minimum Phase 1 fixture players] Add deterministic verification
+- [x] [depends on: minimum Phase 1 fixture players] Add deterministic verification
       coverage for the two fixed completion lines listed in this plan.
-- [ ] [depends on: tagged-runner e2e] Add CI wiring that installs the pinned
+- [x] [depends on: tagged-runner e2e] Add CI wiring that installs the pinned
       `arena-runner` host and runs the same end-to-end path.
-- [ ] [depends on: green e2e path] Update `docs/project-plan.md` to mark
+- [x] [depends on: green e2e path] Update `docs/project-plan.md` to mark
       Phase 1 complete.
 
 ## Parallelism

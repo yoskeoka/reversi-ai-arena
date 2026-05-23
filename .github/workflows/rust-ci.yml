@@ -9,7 +9,10 @@ on:
       - "Makefile"
       - "rust-toolchain.toml"
       - "cmd/**"
+      - "e2e/**"
+      - "testdata/**"
       - "games/reversi/**"
+      - "players/fixture-bots/**"
       - "players/rust-reference/**"
       - "tools/rust-ci.sh"
   push:
@@ -22,7 +25,10 @@ on:
       - "Makefile"
       - "rust-toolchain.toml"
       - "cmd/**"
+      - "e2e/**"
+      - "testdata/**"
       - "games/reversi/**"
+      - "players/fixture-bots/**"
       - "players/rust-reference/**"
       - "tools/rust-ci.sh"
 
@@ -48,6 +54,9 @@ jobs:
               - "Makefile"
               - "rust-toolchain.toml"
               - "cmd/**"
+              - "e2e/**"
+              - "testdata/**"
+              - "players/fixture-bots/**"
               - "tools/rust-ci.sh"
             game:
               - "games/reversi/**"

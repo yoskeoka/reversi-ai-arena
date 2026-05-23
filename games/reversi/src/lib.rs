@@ -1,6 +1,9 @@
-//! Reversi game-surface DTOs shared by the game master and player surfaces.
+//! Reversi game-surface DTOs, rules logic, and game-master state machine.
 
-use aiarena_protocol::{GameMetadata, gamemaster, player};
+pub mod engine;
+pub mod gamemaster;
+
+use aiarena_protocol::{GameMetadata, gamemaster as gm, player};
 use serde::{Deserialize, Serialize};
 
 pub const GAME_ID: &str = "reversi";
@@ -93,10 +96,10 @@ pub struct GameSummary {
     pub winners: Vec<PlayerColor>,
 }
 
-pub type ReversiGameMasterInitState = gamemaster::InitState<InitState>;
-pub type ReversiDecisionStep = gamemaster::DecisionStep<VisibleState, LegalActionHint>;
-pub type ReversiActionStatus = gamemaster::ActionStatus<Action>;
-pub type ReversiExportedSnapshot = gamemaster::ExportedSnapshot<PublicState, Action>;
+pub type ReversiGameMasterInitState = gm::InitState<InitState>;
+pub type ReversiDecisionStep = gm::DecisionStep<VisibleState, LegalActionHint>;
+pub type ReversiActionStatus = gm::ActionStatus<Action>;
+pub type ReversiExportedSnapshot = gm::ExportedSnapshot<PublicState, Action>;
 pub type ReversiPlayerInitParams = player::InitParams<InitState>;
 pub type ReversiPlayerTurnParams = player::TurnParams<VisibleState, LegalActionHint>;
 pub type ReversiPlayerTurnResult = player::TurnResult<Action>;
@@ -151,7 +154,7 @@ mod tests {
     fn game_master_action_status_uses_reversi_action_payload() {
         let status = ReversiActionStatus {
             player_id: "p1".to_string(),
-            action_status: gamemaster::ActionDecision::Accepted,
+            action_status: gm::ActionDecision::Accepted,
             failure_reason: None,
             action: Some(Action {
                 kind: ActionKind::Place,
