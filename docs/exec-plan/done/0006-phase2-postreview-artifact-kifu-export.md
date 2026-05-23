@@ -42,6 +42,9 @@ visualizer is implemented later.
   - loads `record.json` or fallback `history.json`
   - extracts a lossless ordered move transcript
   - renders compact or pass-inclusive text output
+- Update the public `README.md` with:
+  - how to launch the in-development Reversi game through local `arena-runner`
+  - how to run the kifu export helper against produced artifacts
 - Add tests and deterministic fixture inputs for:
   - directory resolution
   - `record.json` precedence over `history.json`

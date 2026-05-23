@@ -1,0 +1,89 @@
+{
+  "match_id": "sample-record-with-pass",
+  "event_log": [
+    {
+      "seq": 1,
+      "kind": "turn_requested",
+      "turn": 1,
+      "player_id": "p1",
+      "payload": {
+        "player_id": "p1"
+      }
+    },
+    {
+      "seq": 2,
+      "kind": "turn_result",
+      "turn": 1,
+      "player_id": "p1",
+      "payload": {
+        "player_id": "p1",
+        "action_status": "accepted",
+        "action": {
+          "kind": "place",
+          "position": {
+            "row": 3,
+            "col": 2
+          }
+        }
+      }
+    },
+    {
+      "seq": 3,
+      "kind": "turn_result",
+      "turn": 2,
+      "player_id": "p2",
+      "payload": {
+        "player_id": "p2",
+        "action_status": "accepted",
+        "action": {
+          "kind": "place",
+          "position": {
+            "row": 2,
+            "col": 4
+          }
+        }
+      }
+    },
+    {
+      "seq": 4,
+      "kind": "turn_result",
+      "turn": 3,
+      "player_id": "p1",
+      "payload": {
+        "player_id": "p1",
+        "action_status": "accepted",
+        "action": {
+          "kind": "pass"
+        }
+      }
+    },
+    {
+      "seq": 5,
+      "kind": "turn_timeout",
+      "turn": 4,
+      "player_id": "p1",
+      "payload": {
+        "player_id": "p1",
+        "action_status": "no_action",
+        "failure_reason": "timeout"
+      }
+    },
+    {
+      "seq": 6,
+      "kind": "turn_result",
+      "turn": 4,
+      "player_id": "p2",
+      "payload": {
+        "player_id": "p2",
+        "action_status": "accepted",
+        "action": {
+          "kind": "place",
+          "position": {
+            "row": 4,
+            "col": 5
+          }
+        }
+      }
+    }
+  ]
+}

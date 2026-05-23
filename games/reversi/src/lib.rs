@@ -2,6 +2,7 @@
 
 pub mod engine;
 pub mod gamemaster;
+pub mod kifu;
 
 use aiarena_protocol::{GameMetadata, gamemaster as gm, player};
 use serde::{Deserialize, Serialize};
@@ -104,6 +105,8 @@ pub type ReversiPlayerInitParams = player::InitParams<InitState>;
 pub type ReversiPlayerTurnParams = player::TurnParams<VisibleState, LegalActionHint>;
 pub type ReversiPlayerTurnResult = player::TurnResult<Action>;
 pub type ReversiPlayerGameOverParams = player::GameOverParams<VisibleState, GameSummary>;
+
+pub use kifu::{Transcript, TranscriptEntry, load_artifact_transcript};
 
 pub fn game_metadata() -> GameMetadata {
     GameMetadata {

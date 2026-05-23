@@ -21,3 +21,4 @@ Phase 1 foundation adds:
 Phase 2 adds:
 
 - `reversi-ai-player.md`
+- `artifact-kifu-export.md`

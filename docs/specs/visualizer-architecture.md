@@ -24,6 +24,9 @@ match artifacts.
 ## Data Contract
 
 - The initial client reads exported JSON artifacts produced by the runner path.
+- The client may reuse the Reversi-owned artifact parsing and transcript core
+  introduced for kifu export rather than reimplementing runner-artifact
+  decoding from scratch.
 - Replay input must be reconstructible without private engine state.
 - Real-time watch support is a later phase that must consume future
   spectator-facing public APIs rather than a Reversi-specific bypass.

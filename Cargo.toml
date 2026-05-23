@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "cmd/reversi-kifu-export",
   "cmd/reversi-gamemaster",
   "e2e/reversi-runner",
   "games/reversi",
