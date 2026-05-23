@@ -22,6 +22,12 @@ expanding scope into new runtime modes or non-deterministic scenario setup.
 - Prefer checked-in deterministic move lines under `testdata/` for canonical
   pass scenarios, with test-generated temporary manifests only for launch
   wiring.
+- The canonical pass fixtures for this plan come from
+  `docs/issues/0002-add-forced-pass-runner-fixtures.md`:
+  - `end with 1 empty cell(forced-pass for both)` for the terminal
+    double-pass case with one empty square remaining
+  - `multiple passes in the middle and ends with some empty cells` for a
+    non-terminal forced pass before the final consecutive-pass ending
 - Treat terminal double-pass completion as an artifact-level contract: the
   runner result must complete normally, preserve the pass turns in history, and
   allow terminal empty cells when the game ends by consecutive passes rather
@@ -31,8 +37,9 @@ expanding scope into new runtime modes or non-deterministic scenario setup.
 
 - Extend deterministic scripted Reversi fixtures under
   `testdata/reversi/scripted-games/` with at least:
-  - one line that reaches a forced-pass turn
-  - one line that ends with consecutive forced passes before the board is full
+  - the issue-tracked line `end with 1 empty cell(forced-pass for both)`
+  - the issue-tracked line `multiple passes in the middle and ends with some
+    empty cells`
 - Update tagged-runner e2e coverage in `e2e/reversi-runner/src/lib.rs` to:
   - replay the new pass-specific fixtures
   - assert the forced-pass player must emit `pass`
@@ -68,7 +75,8 @@ expanding scope into new runtime modes or non-deterministic scenario setup.
 - [ ] Define the forced-pass fixture contract in specs before changing tests.
 - [ ] [parallel] Curate deterministic scripted lines from the tracked kifu
       candidates and commit them under
-      `testdata/reversi/scripted-games/`.
+      `testdata/reversi/scripted-games/`, using the two pass-oriented issue
+      references as the required initial cases.
 - [ ] [parallel] Audit the current scripted-player and `e2e/reversi-runner`
       token-splitting helpers, then define the smallest format/parser change
       needed so deterministic line fixtures can include explicit `pass`.
@@ -94,9 +102,13 @@ expanding scope into new runtime modes or non-deterministic scenario setup.
   explicit `pass` turns.
 - Tagged-runner e2e completes at least one forced-pass scripted match through
   the manifest-backed game master.
+- Tagged-runner e2e covers the issue's `multiple passes in the middle and ends
+  with some empty cells` case as the success path for explicit forced-pass
+  turns before terminal state.
 - Tagged-runner artifacts show the forced-pass turn in replay-safe history.
-- Tagged-runner e2e proves terminal completion after consecutive forced passes
-  even when the final board still contains empty cells.
+- Tagged-runner e2e proves terminal completion for the issue's
+  `end with 1 empty cell(forced-pass for both)` case, including the remaining
+  empty square after consecutive forced passes.
 - Existing illegal-pass immediate-loss coverage remains intact and clearly
   separated from the new required-pass success path.
 
