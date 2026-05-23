@@ -29,8 +29,8 @@ expanding scope into new runtime modes or non-deterministic scenario setup.
 
 ## Code Changes
 
-- Extend deterministic scripted Reversi fixtures under `testdata/reversi/`
-  with at least:
+- Extend deterministic scripted Reversi fixtures under
+  `testdata/reversi/scripted-games/` with at least:
   - one line that reaches a forced-pass turn
   - one line that ends with consecutive forced passes before the board is full
 - Update tagged-runner e2e coverage in `e2e/reversi-runner/src/lib.rs` to:
@@ -39,8 +39,9 @@ expanding scope into new runtime modes or non-deterministic scenario setup.
   - assert normal completion for terminal double-pass endings
   - verify artifact details beyond `completed`, including preserved pass turns
     and non-full-board terminal state when applicable
-- Update fixture helpers only if the current scripted-player manifest or move
-  parser cannot express explicit `pass` turns cleanly.
+- Update the scripted-fixture parsing/scheduling helpers so canonical fixture
+  lines can encode explicit `pass` tokens without assuming fixed two-character
+  move chunks.
 
 ## Spec Changes
 
@@ -66,10 +67,11 @@ expanding scope into new runtime modes or non-deterministic scenario setup.
 
 - [ ] Define the forced-pass fixture contract in specs before changing tests.
 - [ ] [parallel] Curate deterministic scripted lines from the tracked kifu
-      candidates and commit them under `testdata/reversi/`.
-- [ ] [parallel] Audit the current scripted-player helper to confirm explicit
-      `pass` tokens are already supported, or note the smallest helper change
-      required.
+      candidates and commit them under
+      `testdata/reversi/scripted-games/`.
+- [ ] [parallel] Audit the current scripted-player and `e2e/reversi-runner`
+      token-splitting helpers, then define the smallest format/parser change
+      needed so deterministic line fixtures can include explicit `pass`.
 - [ ] [depends on: forced-pass fixture contract, scripted lines] Extend
       `e2e/reversi-runner` coverage for forced-pass and terminal double-pass
       scenarios.
