@@ -7,6 +7,10 @@ publish = false
 [lib]
 path = "src/lib.rs"
 
+[[bin]]
+name = "reversi-rust-reference-player"
+path = "src/main.rs"
+
 [dependencies]
 aiarena-protocol = { path = "../../internal/aiarena-protocol" }
 reversi-game = { path = "../../games/reversi" }

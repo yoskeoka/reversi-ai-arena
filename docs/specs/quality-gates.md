@@ -15,7 +15,7 @@ Run these commands from the repository root:
 - `make rust-clippy`: run Clippy for all workspace targets with warnings denied
 - `make rust-test`: run the workspace Rust test suite
 - `make wasm-check`: build the Rust reference player for
-  `wasm32-unknown-unknown`
+  `wasm32-wasip1`
 - `make runner-e2e`: install the pinned tagged `arena-runner` and run the
   manifest-backed Reversi end-to-end verification path
 - `make verify-rust`: run the required Rust verification path for this phase
@@ -42,8 +42,8 @@ Run these commands from the repository root:
 
 ## WASM Readiness
 
-- `wasm32-unknown-unknown` is part of the repository toolchain contract.
-- The Rust reference player must stay buildable for that target even before the
-  real AI implementation lands.
+- `wasm32-wasip1` is part of the repository toolchain contract.
+- The Rust reference player must stay buildable for that target as a runnable
+  `wasm-wasi` program.
 - A failing WASM build is a verification failure for the player surface, not an
   optional follow-up task.

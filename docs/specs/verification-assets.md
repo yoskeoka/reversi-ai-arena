@@ -3,8 +3,8 @@
 ## Purpose
 
 This specification records the deterministic assets and ownership boundaries
-used to prove that the Reversi game-master path completes through the tagged
-runner.
+used to prove that the Reversi game-master path and the Rust WASM AI-player
+path complete through the tagged runner.
 
 ## Phase 1 Fixed Completion Lines
 
@@ -24,7 +24,8 @@ These lines are the canonical scripted fixtures for proving:
 - `games/reversi/` owns core rules, validation, snapshot logic, and game-master
   state transitions
 - `cmd/` owns the runnable game-master entrypoint
-- `players/` owns local fixture-player executables
+- `players/` owns local fixture-player executables and the Rust WASM player
+  artifact source
 - `e2e/` owns helper code that prepares manifests, binaries, and runner
   invocations
 - `testdata/` owns deterministic scripted lines and any expected replay-safe
@@ -33,8 +34,16 @@ These lines are the canonical scripted fixtures for proving:
 ## Build And Regeneration Policy
 
 - Local fixture binaries may be rebuilt during test setup.
+- The Rust WASM player fixture must be built once per verification scope and
+  then reused through cached artifact paths for the remaining tests in that
+  scope.
+- Cached WASM artifacts may live under a repository-local temporary directory
+  or under `target/`-adjacent build output, but the helper that owns them must
+  hide those details from the individual tests.
 - Temporary manifests that point at built local binaries may be generated during
   test setup and do not need to be committed.
+- Temporary player sidecars that point at cached `.wasm` modules may be
+  generated during test setup and do not need to be committed.
 - Checked-in fixed move lines under `testdata/` are canonical and may change
   only when the intended game contract changes.
 
@@ -42,7 +51,9 @@ These lines are the canonical scripted fixtures for proving:
 
 - unit tests for legal-move generation, flipping, pass detection, and terminal
   scoring
+- unit tests for the Rust WASM player decision logic
 - at least one tagged-runner match completed by the legal-move-first fixture
+- at least one tagged-runner match completed by the Rust WASM player fixture
 - tagged-runner deterministic replay of both fixed scripted completion lines
 - tagged-runner coverage for immediate loss on invalid or unusable action
 
@@ -53,3 +64,5 @@ When these assets change, review should confirm:
 - the scripted lines remain intentional
 - local and CI use the same runner version
 - no fixture asset quietly becomes the mainline competitive player surface
+- the WASM fixture path is cache-backed rather than rebuilt independently by
+  each runner test

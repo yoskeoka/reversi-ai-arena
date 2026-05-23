@@ -18,8 +18,8 @@
   public `ai-arena` transport contract. It may be shared by the game master and
   player surfaces, but it must stay free of Reversi rules logic.
 - The repository Rust toolchain must include `rustfmt`, `clippy`, and the
-  `wasm32-unknown-unknown` target so local and CI verification can exercise the
-  same baseline without ad hoc setup.
+  `wasm32-wasip1` target so local and CI verification can exercise the same
+  baseline without ad hoc setup.
 - Go support code must stay visibly secondary to the Rust mainline and should
   live under dedicated `players/` or verification-oriented directories.
 - Browser tooling must remain isolated to `visualizer/` and must not drive

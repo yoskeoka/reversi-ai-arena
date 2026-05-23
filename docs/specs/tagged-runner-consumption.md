@@ -3,7 +3,7 @@
 ## Purpose
 
 This specification fixes how `reversi-ai-arena` consumes the external
-`ai-arena` runner host for Phase 1 end-to-end verification.
+`ai-arena` runner host for Phase 1 and Phase 2 end-to-end verification.
 
 The goal is to keep the local and CI entrypoint identical:
 
@@ -56,6 +56,18 @@ Phase 1 requires two deterministic fixture-player modes:
 These fixtures exist to verify the game-master and runner integration. They are
 not the main competitive AI path.
 
+## Phase 2 WASM Player Contract
+
+Phase 2 extends the same runner path with a cached WASM AI fixture:
+
+- the player sidecar must declare `runtime.kind = wasm-wasi`
+- the sidecar must point at a cached `.wasm` module built from
+  `players/rust-reference/`
+- runner-based tests may reuse the same cached `.wasm` module and generated
+  sidecar across multiple test cases in the same verification scope
+- scripted or legal-move-first subprocess bots remain valid opponents and
+  failure fixtures for the WASM lane
+
 ## Artifact Contract
 
 A successful Phase 1 runner execution must produce the standard runner artifact
@@ -74,6 +86,8 @@ At minimum, verification must assert that:
 - the metadata tuple matches Reversi
 - the exported snapshot is terminal
 - the history includes explicit forced-pass turns when they occur
+- the WASM player path resolves through a sidecar manifest rather than a native
+  player binary path
 
 ## Local And CI Alignment
 
@@ -82,3 +96,5 @@ At minimum, verification must assert that:
   launching the runner.
 - Local verification and CI must use the same manifest-backed runner path
   rather than a repo-local special case.
+- Local verification and CI must build the Rust WASM fixture once per
+  verification scope and then reuse that artifact across runner tests.

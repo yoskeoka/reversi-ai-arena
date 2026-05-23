@@ -17,3 +17,7 @@ Phase 1 foundation adds:
 - `reversi-game-master.md`
 - `tagged-runner-consumption.md`
 - `verification-assets.md`
+
+Phase 2 adds:
+
+- `reversi-ai-player.md`
