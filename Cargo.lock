@@ -68,6 +68,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "reversi-kifu-export"
+version = "0.1.0"
+dependencies = [
+ "reversi-game",
+]
+
+[[package]]
 name = "reversi-runner-e2e"
 version = "0.1.0"
 dependencies = [

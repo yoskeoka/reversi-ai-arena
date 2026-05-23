@@ -46,6 +46,8 @@ These lines are the canonical scripted fixtures for proving:
   generated during test setup and do not need to be committed.
 - Checked-in fixed move lines under `testdata/` are canonical and may change
   only when the intended game contract changes.
+- Checked-in kifu-export fixtures under `testdata/reversi/artifacts/` may store
+  compact runner-artifact slices that prove transcript extraction behavior.
 
 ## Minimum Verification Set
 
@@ -56,6 +58,8 @@ These lines are the canonical scripted fixtures for proving:
 - at least one tagged-runner match completed by the Rust WASM player fixture
 - tagged-runner deterministic replay of both fixed scripted completion lines
 - tagged-runner coverage for immediate loss on invalid or unusable action
+- unit coverage for artifact-to-transcript extraction from checked-in
+  `record.json` and `history.json` fixtures
 
 ## Review Expectations
 
