@@ -1,4 +1,4 @@
-# Phase2 Post-Review Artifact Kifu Export
+# Phase 2 Post-Review Artifact Kifu Export
 **Execution**: Use `/execute-task` to implement this plan.
 
 ## Objective
