@@ -1,3 +1,4 @@
 /target/
+/.tmp/
 /visualizer/node_modules/
 /visualizer/dist/
