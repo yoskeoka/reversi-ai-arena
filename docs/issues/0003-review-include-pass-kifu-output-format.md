@@ -33,6 +33,18 @@ The initial comparison set should include at least:
 3. GGF and other text formats already accepted by established Othello tools
 4. compact move-string conventions used by current analysis tools
 
+Reference sources for that comparison:
+
+- WTHOR database overview:
+  `https://www.ffothello.org/informatique/la-base-wthor/`
+- WTHOR transcript / notation workflow:
+  `https://www.ffothello.org/federation-francaise/reglement-interieur/transcription-des-parties-base-wthor/`
+- SGF FF[4] specification covering Othello/Reversi:
+  `https://www.red-bean.com/sgf/sgf4.html`
+- Existing Othello tool accepting compact game record, GGF, and related text
+  inputs:
+  `https://www.egaroucid.nyanyan.dev/en/usage`
+
 Before implementation, document which existing format families were reviewed,
 how they express pass turns, and why the chosen output should match,
 approximate, or intentionally differ from them.
