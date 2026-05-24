@@ -21,13 +21,18 @@ obvious in the single compact token stream.
 
 ## Proposed Direction
 
-Evaluate alternatives that keep pass turns explicit without making the compact
-output ambiguous. Candidate directions:
+Do not invent a new house style first. Instead, survey game-record formats that
+existing Othello/Reversi software and databases already use, then decide
+whether `reversi-kifu-export --include-pass` should align with one of them or
+offer a compatible readable variant.
 
-1. add a delimiter around `pass`, such as `...g2-pass-a5`
-2. switch only `--include-pass` to a tokenized representation with separators
-3. keep the current compact string as the default but add another explicit
-   human-readable mode
+The initial comparison set should include at least:
 
-Any change should define the canonical contract for both export readability and
-future parser compatibility before implementation.
+1. WTHOR-style tournament record workflows and transcripts
+2. SGF-based Reversi/Othello game records
+3. GGF and other text formats already accepted by established Othello tools
+4. compact move-string conventions used by current analysis tools
+
+Before implementation, document which existing format families were reviewed,
+how they express pass turns, and why the chosen output should match,
+approximate, or intentionally differ from them.
