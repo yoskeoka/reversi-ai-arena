@@ -6,18 +6,26 @@ This specification records the deterministic assets and ownership boundaries
 used to prove that the Reversi game-master path and the Rust WASM AI-player
 path complete through the tagged runner.
 
-## Phase 1 Fixed Completion Lines
+## Phase 1 Scripted Fixture Suite
 
-Phase 1 owns two fixed scripted completion lines:
+Phase 1 owns four canonical scripted Reversi lines under
+`testdata/reversi/scripted-games/`:
 
-- `c4e3f6e6f5c5f4g6f7g5d6d3f3c3h4h5g4h3e2f2d2d1g3e1b6c2b4e8f8g8b3h2f1g1b1a3h7a5a4b5a6a7c6e7d7d8g7a2c8b8c7c1h1h8h6g2b2b7a8a1`
-- `c4e3f4c5d6f3e6c3d3e2b6f5b4f6c2e7d2c7f1c6f2a6d7c8f8d8g5g6e8h4b8f7g8b5g3g4h3a3h5b3b7h6h7e1d1b1c1g1g2a8a7h8g7h2a4h1a5b2a2a1`
+- `end with 1 empty cell(forced-pass for both)`
+  - `f5f6e6f4e3c5c4d6b5d3c3e2f2c2d2b3b4f3c1e1g3g4h4h5c6h3g5f1c7a4a5h6d7g6a3e7f8d1f7b1g2b2h2h1g1b8c8e8d8g8a1a2h7h8g7b7b6a6a7passpass`
+- `fastest black win`
+  - `f5d6c5f4e7f6g5e6e3passpass`
+- `short white win`
+  - `f5f6e6d6e7f7d7f4c5c7c6b6passpass`
+- `multiple passes in the middle and ends with some empty cells`
+  - `d3c5f6f5e6e3d6f7b6e7f3c6d7c8g5f4g7g6e8c7d8h8b5f2h5h4f1g4h7h6b8g3g2h3passh2passc4b3g8passf8passa8passb4c3h1a3g1e2e1passb7passc2d1a7d2a6passc1passa4a5a2passpass`
 
-These lines are the canonical scripted fixtures for proving:
+This suite is the canonical scripted-fixture acceptance set for proving:
 
-- deterministic completion
-- end-of-game score stability
-- no silent forced-pass skips inside the game-master path
+- deterministic completion through the tagged runner
+- explicit forced-pass turn requests and preserved pass history
+- terminal completion by consecutive passes even when empty cells remain
+- short black-win and white-win completions in the same scripted-fixture lane
 
 ## Asset Ownership
 
@@ -56,7 +64,7 @@ These lines are the canonical scripted fixtures for proving:
 - unit tests for the Rust WASM player decision logic
 - at least one tagged-runner match completed by the legal-move-first fixture
 - at least one tagged-runner match completed by the Rust WASM player fixture
-- tagged-runner deterministic replay of both fixed scripted completion lines
+- tagged-runner deterministic replay of the four canonical scripted lines
 - tagged-runner coverage for immediate loss on invalid or unusable action
 - unit coverage for artifact-to-transcript extraction from checked-in
   `record.json` and `history.json` fixtures
@@ -66,6 +74,7 @@ These lines are the canonical scripted fixtures for proving:
 When these assets change, review should confirm:
 
 - the scripted lines remain intentional
+- pass-bearing scripted lines still encode explicit `pass` turns correctly
 - local and CI use the same runner version
 - no fixture asset quietly becomes the mainline competitive player surface
 - the WASM fixture path is cache-backed rather than rebuilt independently by

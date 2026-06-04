@@ -145,8 +145,12 @@ Phase 1 verification must prove at least:
 
 - legal-move generation matches the standard opening and later flips
 - explicit forced-pass turns are requested and recorded
+- required-pass success cases complete normally through the tagged runner
 - illegal `pass` with legal moves causes an immediate loss
 - timeout or other unusable response with legal moves causes an immediate loss
-- fixed scripted completion lines reach a terminal result consistently
+- the canonical four-case scripted suite reaches terminal results consistently
+- the terminal double-pass fixture can finish with empty cells still remaining
+  after both forced-pass turns are accepted
 - the tagged runner can launch the manifest-backed game master and produce
   standard artifacts
+- runner artifacts preserve accepted `pass` actions in replay-safe history
