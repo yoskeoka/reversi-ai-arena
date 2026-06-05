@@ -56,6 +56,19 @@ Phase 1 requires two deterministic fixture-player modes:
 These fixtures exist to verify the game-master and runner integration. They are
 not the main competitive AI path.
 
+The scripted-fixture lane must cover the repository's canonical four-case suite:
+
+- `end with 1 empty cell(forced-pass for both)` proves terminal double-pass
+  completion with one empty square still on the board
+- `fastest black win` proves a short deterministic black-win completion
+- `short white win` proves a short deterministic white-win completion
+- `multiple passes in the middle and ends with some empty cells` proves
+  required-pass turns before the final terminal double-pass
+
+Checked-in scripted lines under `testdata/reversi/scripted-games/` must encode
+forced-pass turns as literal `pass` tokens at the exact turn where the player
+response is required.
+
 ## Phase 2 WASM Player Contract
 
 Phase 2 extends the same runner path with a cached WASM AI fixture:
@@ -86,6 +99,10 @@ At minimum, verification must assert that:
 - the metadata tuple matches Reversi
 - the exported snapshot is terminal
 - the history includes explicit forced-pass turns when they occur
+- the terminal double-pass fixture leaves one empty square after normal
+  completion rather than converting the ending into an immediate loss
+- the mid-game forced-pass fixture preserves one or more accepted `pass` turns
+  before the final terminal state
 - the WASM player path resolves through a sidecar manifest rather than a native
   player binary path
 

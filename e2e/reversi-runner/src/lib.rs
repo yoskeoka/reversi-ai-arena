@@ -6,6 +6,7 @@ mod tests {
     use std::process::Command;
     use std::sync::OnceLock;
 
+    use reversi_fixture_bots::{ScriptToken, parse_script_tokens};
     use serde::Deserialize;
 
     #[derive(Debug, Deserialize)]
@@ -53,6 +54,35 @@ mod tests {
     struct ActionStatus {
         action_status: String,
         failure_reason: Option<String>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct HistoryEvent {
+        turn: i32,
+        kind: String,
+        #[allow(dead_code)]
+        player_id: Option<String>,
+        payload: Option<HistoryPayload>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct HistoryPayload {
+        action_status: Option<String>,
+        action: Option<HistoryAction>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct HistoryAction {
+        kind: String,
+    }
+
+    struct ScriptedCase {
+        file_name: &'static str,
+        match_id: &'static str,
+        expected_winner: Option<&'static str>,
+        min_pass_count: usize,
+        expected_disc_total: Option<u16>,
+        require_final_double_pass: bool,
     }
 
     #[test]
@@ -140,17 +170,18 @@ mod tests {
 
     #[test]
     #[ignore = "requires pinned tagged arena-runner install"]
-    fn tagged_runner_replays_both_scripted_completion_lines() {
+    fn tagged_runner_replays_canonical_scripted_suite() {
         let repo = repo_root();
         let runner = runner_bin();
-        let lines = load_script_lines(&repo);
         let fixtures = build_fixtures(&repo);
+        let cases = scripted_cases();
 
-        for (index, line) in lines.iter().enumerate() {
+        for case in cases {
             let fixture_dir = prepare_fixture_dir(&repo);
-            let output_dir = fixture_dir.join(format!("artifacts-scripted-{}", index + 1));
+            let output_dir = fixture_dir.join(format!("artifacts-{}", case.match_id));
             let manifest_path = write_game_master_manifest(&fixture_dir, &repo);
-            let (black_moves, white_moves) = split_moves(line);
+            let line = load_script_line(&repo, case.file_name);
+            let (black_moves, white_moves) = split_moves(&line);
             let p1_entry = write_scripted_player_manifest(
                 &fixture_dir,
                 &fixtures.scripted_player_entry,
@@ -171,7 +202,7 @@ mod tests {
                     "--game-master-manifest",
                     &repo_relative(&repo, &manifest_path),
                     "--match-id",
-                    &format!("reversi-scripted-{}", index + 1),
+                    case.match_id,
                     "--output-dir",
                     &repo_relative(&repo, &output_dir),
                     "--log-output",
@@ -183,16 +214,60 @@ mod tests {
                 ],
             );
 
-            let match_dir = output_dir.join(format!("reversi-scripted-{}", index + 1));
+            let match_dir = output_dir.join(case.match_id);
             let summary = read_summary(match_dir.join("result-summary.json"));
             assert_eq!(summary.status, "completed");
+            if let Some(expected_winner) = case.expected_winner {
+                let winner = summary
+                    .placements
+                    .iter()
+                    .find(|placement| placement.place == 1)
+                    .expect("winner placement");
+                assert_eq!(winner.player_id, expected_winner);
+            }
             let exported = read_exported_snapshot(match_dir.join("exported-snapshot.json"));
             let public_state = exported.public_state.expect("public state");
             assert!(public_state.completed);
-            assert_eq!(
-                public_state.scores.black as u16 + public_state.scores.white as u16,
-                64
+            if let Some(expected_disc_total) = case.expected_disc_total {
+                assert_eq!(
+                    public_state.scores.black as u16 + public_state.scores.white as u16,
+                    expected_disc_total
+                );
+            }
+
+            let history = read_history(match_dir.join("history.json"));
+            let accepted_passes = accepted_passes(&history);
+            assert!(
+                accepted_passes.len() >= case.min_pass_count,
+                "expected at least {} accepted passes in {}, got {}",
+                case.min_pass_count,
+                case.match_id,
+                accepted_passes.len()
             );
+            if case.require_final_double_pass {
+                let accepted_actions = accepted_actions(&history);
+                let tail = accepted_actions
+                    .get(accepted_actions.len().saturating_sub(2)..)
+                    .expect("last two accepted actions");
+                assert_eq!(tail.len(), 2, "expected two accepted actions at the end");
+                assert_eq!(
+                    tail[0]
+                        .payload
+                        .as_ref()
+                        .and_then(|payload| payload.action.as_ref())
+                        .map(|action| action.kind.as_str()),
+                    Some("pass")
+                );
+                assert_eq!(
+                    tail[1]
+                        .payload
+                        .as_ref()
+                        .and_then(|payload| payload.action.as_ref())
+                        .map(|action| action.kind.as_str()),
+                    Some("pass")
+                );
+                assert_eq!(tail[1].turn, tail[0].turn + 1);
+            }
         }
     }
 
@@ -443,44 +518,73 @@ mod tests {
         }
     }
 
-    fn load_script_lines(repo: &Path) -> Vec<String> {
-        [
-            repo.join("testdata/reversi/scripted-games/line-1.txt"),
-            repo.join("testdata/reversi/scripted-games/line-2.txt"),
+    fn scripted_cases() -> &'static [ScriptedCase] {
+        &[
+            ScriptedCase {
+                file_name: "end-with-1-empty-cell-forced-pass-for-both.txt",
+                match_id: "reversi-scripted-terminal-double-pass",
+                expected_winner: None,
+                min_pass_count: 2,
+                expected_disc_total: Some(63),
+                require_final_double_pass: true,
+            },
+            ScriptedCase {
+                file_name: "fastest-black-win.txt",
+                match_id: "reversi-scripted-fastest-black-win",
+                expected_winner: Some("p1"),
+                min_pass_count: 0,
+                expected_disc_total: None,
+                require_final_double_pass: false,
+            },
+            ScriptedCase {
+                file_name: "short-white-win.txt",
+                match_id: "reversi-scripted-short-white-win",
+                expected_winner: Some("p2"),
+                min_pass_count: 0,
+                expected_disc_total: None,
+                require_final_double_pass: false,
+            },
+            ScriptedCase {
+                file_name: "multiple-passes-middle-and-empty-end.txt",
+                match_id: "reversi-scripted-multi-pass-empty-end",
+                expected_winner: None,
+                min_pass_count: 3,
+                expected_disc_total: None,
+                require_final_double_pass: true,
+            },
         ]
-        .into_iter()
-        .map(|path| {
-            fs::read_to_string(path)
-                .expect("read line")
-                .trim()
-                .to_string()
-        })
-        .collect()
+    }
+
+    fn load_script_line(repo: &Path, file_name: &str) -> String {
+        fs::read_to_string(repo.join("testdata/reversi/scripted-games").join(file_name))
+            .expect("read line")
+            .trim()
+            .to_string()
     }
 
     fn split_moves(line: &str) -> (String, String) {
         let mut black = String::new();
         let mut white = String::new();
-        let bytes = line.as_bytes();
-        assert!(
-            bytes.len().is_multiple_of(2),
-            "scripted line must contain an even number of bytes: {}",
-            line
-        );
-        let mut index = 0usize;
-        let mut turn = 0usize;
-        while index < bytes.len() {
-            let token = std::str::from_utf8(&bytes[index..index + 2])
-                .unwrap_or_else(|_| panic!("scripted line contains non-ascii token: {}", line));
+        let tokens = parse_script_tokens(line)
+            .unwrap_or_else(|err| panic!("scripted line is invalid: {line}: {err}"));
+        for (turn, token) in tokens.into_iter().enumerate() {
             if turn.is_multiple_of(2) {
-                black.push_str(token);
+                push_script_token(&mut black, token);
             } else {
-                white.push_str(token);
+                push_script_token(&mut white, token);
             }
-            turn += 1;
-            index += 2;
         }
         (black, white)
+    }
+
+    fn push_script_token(target: &mut String, token: ScriptToken) {
+        match token {
+            ScriptToken::Move(position) => {
+                target.push((b'a' + position.col) as char);
+                target.push((b'1' + position.row) as char);
+            }
+            ScriptToken::Pass => target.push_str("pass"),
+        }
     }
 
     fn read_summary(path: PathBuf) -> ResultSummary {
@@ -490,6 +594,44 @@ mod tests {
     fn read_exported_snapshot(path: PathBuf) -> ExportedSnapshot {
         serde_json::from_slice(&fs::read(path).expect("read exported snapshot"))
             .expect("decode exported snapshot")
+    }
+
+    fn read_history(path: PathBuf) -> Vec<HistoryEvent> {
+        serde_json::from_slice(&fs::read(path).expect("read history")).expect("decode history")
+    }
+
+    fn accepted_passes(history: &[HistoryEvent]) -> Vec<&HistoryEvent> {
+        history
+            .iter()
+            .filter(|event| {
+                event.kind == "turn_result"
+                    && event
+                        .payload
+                        .as_ref()
+                        .and_then(|payload| payload.action_status.as_deref())
+                        == Some("accepted")
+                    && event
+                        .payload
+                        .as_ref()
+                        .and_then(|payload| payload.action.as_ref())
+                        .map(|action| action.kind.as_str())
+                        == Some("pass")
+            })
+            .collect()
+    }
+
+    fn accepted_actions(history: &[HistoryEvent]) -> Vec<&HistoryEvent> {
+        history
+            .iter()
+            .filter(|event| {
+                event.kind == "turn_result"
+                    && event
+                        .payload
+                        .as_ref()
+                        .and_then(|payload| payload.action_status.as_deref())
+                        == Some("accepted")
+            })
+            .collect()
     }
 
     fn repo_relative(repo: &Path, path: &Path) -> String {

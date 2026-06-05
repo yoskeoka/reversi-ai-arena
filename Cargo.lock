@@ -78,6 +78,7 @@ dependencies = [
 name = "reversi-runner-e2e"
 version = "0.1.0"
 dependencies = [
+ "reversi-fixture-bots",
  "serde",
  "serde_json",
 ]
