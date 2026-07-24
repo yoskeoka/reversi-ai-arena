@@ -22,7 +22,7 @@ the completion boundary.
 This repository consumes the bundle schema and validator owned by `ai-arena`;
 it does not fork that contract.
 
-- Game asset: `reversi-game-1.0.0.arena.zip`
+- Game asset: `reversi-game-<release-version>.arena.zip`
   - root `manifest.json`
   - one declared Reversi game-master WASM module
   - game identity `reversi`, exact version `1.0.0`
@@ -43,6 +43,9 @@ The user-visible bot/player name is not part of the AI bundle. It remains
 control-plane metadata entered when a user creates a bot in `ai-arena`.
 Game and AI bundles remain separate so they can be updated, owned, submitted,
 and retired independently.
+The filename release version identifies the repository release that produced
+the bytes; the game manifest's compatibility version remains `1.0.0` and does
+not have to equal that release version.
 
 ## Existing Implementation References
 
