@@ -1,12 +1,13 @@
-# Historical workflow artifact retention
+# Completed plan and local issue history retention
 
 > **Execution**: Use `/execute-task` to implement this plan. After implementation is complete, use `/review-task` to prepare and create the PR.
 
 ## Objective
 
-Eliminate checked-out `done/` task history so search exposes active plans and
-unresolved issues only. Keep plan/implementation PRs and Git history as the
-audit path, without embedding plan bodies in commit messages.
+Eliminate checked-out `docs/exec-plan/done/` and `docs/issues/done/` task
+history so search exposes active plans and unresolved issues only. Keep
+plan/implementation PRs and Git history as the audit path, without embedding
+plan bodies in commit messages.
 
 ## Changes
 
