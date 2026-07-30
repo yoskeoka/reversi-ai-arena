@@ -23,7 +23,7 @@ case "$cmd" in
         ;;
     wasm)
         cargo build --release --target wasm32-wasip1 -p reversi-gamemaster --bin reversi-gamemaster
-        cargo build --target wasm32-wasip1 -p reversi-rust-reference-player --bin reversi-rust-reference-player
+        cargo build --release --target wasm32-wasip1 -p reversi-rust-reference-player --bin reversi-rust-reference-player
         ;;
     e2e)
         cache_root=/tmp/reversi-ai-arena-go

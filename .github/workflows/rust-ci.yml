@@ -17,6 +17,8 @@ on:
       - "tools/rust-ci.sh"
       - "tools/release-packager/**"
       - "docs/specs/submittable-artifacts.md"
+      - "games/reversi/**"
+      - "players/rust-reference/**"
   push:
     branches:
       - main
@@ -33,6 +35,10 @@ on:
       - "players/fixture-bots/**"
       - "players/rust-reference/**"
       - "tools/rust-ci.sh"
+      - "tools/release-packager/**"
+      - "docs/specs/submittable-artifacts.md"
+      - "games/reversi/**"
+      - "players/rust-reference/**"
 
 jobs:
   detect:
@@ -62,6 +68,8 @@ jobs:
               - "tools/rust-ci.sh"
               - "tools/release-packager/**"
               - "docs/specs/submittable-artifacts.md"
+              - "games/reversi/**"
+              - "players/rust-reference/**"
             game:
               - "games/reversi/**"
             player:

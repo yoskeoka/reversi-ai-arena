@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-release_version="${1:?usage: package.sh <release-version> [output-dir>}"
+release_version="${1:?usage: package.sh <release-version> [output-dir]}"
 output_dir="${2:-${repo_root}/dist}"
 epoch="${SOURCE_DATE_EPOCH:-315532800}" # 1980-01-01, the ZIP epoch
 if [[ "${epoch}" != "315532800" ]]; then

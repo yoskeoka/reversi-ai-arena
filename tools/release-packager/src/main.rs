@@ -50,7 +50,10 @@ fn ai_manifest() -> Value {
         .get_mut("runtime")
         .and_then(Value::as_object_mut)
         .expect("reference player manifest has runtime")
-        .insert("module".to_string(), json!("rust-reference-ai.wasm"));
+        .extend([
+            ("module".to_string(), json!("rust-reference-ai.wasm")),
+            ("args".to_string(), json!(["./rust-reference-ai.wasm"])),
+        ]);
     manifest
 }
 
@@ -99,6 +102,10 @@ mod tests {
         assert_eq!(manifest["game_id"], GAME_ID);
         assert_eq!(manifest["game_version"], GAME_VERSION);
         assert_eq!(manifest["runtime"]["module"], "rust-reference-ai.wasm");
+        assert_eq!(
+            manifest["runtime"]["args"],
+            json!(["./rust-reference-ai.wasm"])
+        );
         assert_eq!(manifest["schema_version"], "arena-bundle/v1");
         assert_eq!(manifest["artifact_kind"], "ai");
     }
