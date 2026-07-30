@@ -32,6 +32,10 @@ Reversi board rules.
   `stdio-jsonrpc-ndjson`.
 - The game-master implementation lives in the Reversi-owned Rust surface under
   `games/reversi/`; the `cmd/` entrypoint is a thin transport adapter.
+- The official delivery is `reversi-gamemaster.wasm`, built in release mode for
+  `wasm32-wasip1` and packaged according to
+  [submittable artifacts](submittable-artifacts.md). Native execution is a
+  development-only convenience.
 
 ## Initial State
 

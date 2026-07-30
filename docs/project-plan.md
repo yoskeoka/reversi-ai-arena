@@ -140,6 +140,8 @@ tools that are needed to operate Reversi as a registered game.
       `arena-runner`, and keep that path green in CI.
 - [x] Phase 2: Implement the Rust AI-player mainline and keep any Go reference
       support optional and lightweight for samples or verification helpers.
+- [x] Release artifacts: publish deterministic WASM/WASI game and Rust
+      reference-AI `arena-bundle/v1` assets for platform registration.
 - [ ] Phase 3: Build a replay visualizer that reads exported runner artifacts
       and replays completed matches with Phaser-rendered game screens.
 - [ ] Phase 4: Integrate a real-time watcher after the platform exposes the

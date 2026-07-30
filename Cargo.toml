@@ -7,5 +7,6 @@ members = [
   "internal/aiarena-protocol",
   "players/fixture-bots",
   "players/rust-reference",
+  "tools/release-packager",
 ]
 resolver = "2"

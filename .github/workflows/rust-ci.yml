@@ -15,6 +15,10 @@ on:
       - "players/fixture-bots/**"
       - "players/rust-reference/**"
       - "tools/rust-ci.sh"
+      - "tools/release-packager/**"
+      - "docs/specs/submittable-artifacts.md"
+      - "games/reversi/**"
+      - "players/rust-reference/**"
   push:
     branches:
       - main
@@ -31,6 +35,10 @@ on:
       - "players/fixture-bots/**"
       - "players/rust-reference/**"
       - "tools/rust-ci.sh"
+      - "tools/release-packager/**"
+      - "docs/specs/submittable-artifacts.md"
+      - "games/reversi/**"
+      - "players/rust-reference/**"
 
 jobs:
   detect:
@@ -58,6 +66,10 @@ jobs:
               - "testdata/**"
               - "players/fixture-bots/**"
               - "tools/rust-ci.sh"
+              - "tools/release-packager/**"
+              - "docs/specs/submittable-artifacts.md"
+              - "games/reversi/**"
+              - "players/rust-reference/**"
             game:
               - "games/reversi/**"
             player:
@@ -71,6 +83,16 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
       - run: make verify-rust
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          repository: yoskeoka/ai-arena
+          ref: 7d23f225a2b4c8bd043c02b156a2e048603eab5b
+          path: ai-arena
+      - run: AI_ARENA_DIR="$GITHUB_WORKSPACE/ai-arena" make verify-release-artifacts
+      - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: reversi-release-artifacts
+          path: dist/
 
   game-verify:
     runs-on: ubuntu-latest

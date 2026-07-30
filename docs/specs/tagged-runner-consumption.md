@@ -19,30 +19,18 @@ The goal is to keep the local and CI entrypoint identical:
 - Version changes must be explicit in this repository rather than inherited
   from a sibling workspace checkout.
 
-## Game-Master Manifest Overlay
+## Official Bundle Consumption
 
-Phase 1 uses the runner's dev-only game-master manifest overlay:
-
-- invocation uses `--game-master-manifest <path>`
-- the manifest supplies:
-  - `metadata.game_id`
-  - `metadata.game_version`
-  - `metadata.ruleset_version`
-  - `runtime.kind = local-subprocess`
-  - `runtime.command`
-- if `runtime.command[0]` is a relative path, it resolves relative to the
-  manifest file directory
-
-Phase 1 uses this overlay because Reversi lives in an external consumer repo
-rather than the runner's built-in registry.
+Official verification builds the two deterministic `arena-bundle/v1` ZIPs and
+passes their exact unpacked bytes through the pinned platform validator and
+WASI runner path. The native local-subprocess game-master manifest overlay is
+development-only and cannot satisfy release or staging acceptance.
 
 ## Scope Limits
 
-- The manifest overlay is used for fresh runs only.
-- Snapshot resume and history replay through the manifest overlay are out of
-  scope for Phase 1.
-- The manifest overlay is for the game master only. Player fixtures continue to
-  use the normal AI sidecar or fallback entry-path rules.
+The exact official bundles must support fresh execution plus the public
+resume/replay lifecycle. Player fixtures remain useful for negative and
+scripted tests but are not release artifacts.
 
 ## Fixture Player Contract
 
