@@ -21,6 +21,8 @@ consumer of the Reversi game and protocol crates while shipping through the
     budget explicitly
 - The player must use the `stdio-jsonrpc-ndjson` transport contract and emit
   only JSON-RPC responses on `stdout`.
+- Official delivery is the immutable `rust-reference-ai.wasm` bundle module;
+  its technical `ai_id` is independent of a user-visible bot name.
 
 ## Turn Contract
 

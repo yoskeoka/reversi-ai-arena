@@ -1,0 +1,37 @@
+name: release-artifacts
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: Release version used in asset filenames
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          repository: yoskeoka/ai-arena
+          ref: 7d23f225a2b4c8bd043c02b156a2e048603eab5b
+          path: ai-arena
+      - id: version
+        env:
+          INPUT_VERSION: ${{ inputs.release_version }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: echo "value=${INPUT_VERSION:-$TAG_NAME}" >> "$GITHUB_OUTPUT"
+      - run: AI_ARENA_DIR="$GITHUB_WORKSPACE/ai-arena" RELEASE_VERSION="${{ steps.version.outputs.value }}" make verify-release-artifacts
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+        run: gh release create "$RELEASE_VERSION" dist/*.arena.zip dist/SHA256SUMS --title "$RELEASE_VERSION" --generate-notes

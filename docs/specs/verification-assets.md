@@ -52,6 +52,9 @@ This suite is the canonical scripted-fixture acceptance set for proving:
   test setup and do not need to be committed.
 - Temporary player sidecars that point at cached `.wasm` modules may be
   generated during test setup and do not need to be committed.
+- Release verification uses the packager's exact two-entry ZIPs, never a
+  handwritten manifest or debug module. Native fixture binaries remain test
+  inputs only.
 - Checked-in fixed move lines under `testdata/` are canonical and may change
   only when the intended game contract changes.
 - Checked-in kifu-export fixtures under `testdata/reversi/artifacts/` may store

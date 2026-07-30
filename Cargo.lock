@@ -75,6 +75,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "reversi-release-packager"
+version = "0.1.0"
+dependencies = [
+ "reversi-game",
+ "reversi-rust-reference-player",
+ "serde_json",
+]
+
+[[package]]
 name = "reversi-runner-e2e"
 version = "0.1.0"
 dependencies = [

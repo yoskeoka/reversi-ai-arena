@@ -10,6 +10,7 @@ platform and public-contract repository.
 - public game-master protocol and compatibility contracts
 - runtime, registry, replay export, and future spectator platform APIs
 - generic runner behavior and WASM execution policy
+- the versioned `arena-bundle/v1` schema and admission validator
 
 ## `reversi-ai-arena` Responsibilities
 
@@ -32,5 +33,9 @@ platform and public-contract repository.
 - Generic platform fixes discovered while building Reversi belong in
   `ai-arena`; this repository may only hold the game-specific integration and
   example side of that boundary.
+- Reversi pins the upstream validator commit in
+  [submittable artifacts](submittable-artifacts.md), invokes it rather than
+  copying its behavior, and publishes byte-identical release assets for
+  platform submission.
 - Knowledge or code ideas may be adapted from `reversi-adventure`, but this
   repository does not assume a shared-library boundary with it.

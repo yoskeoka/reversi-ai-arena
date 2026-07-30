@@ -6,12 +6,29 @@ visualizer, fixtures, and public examples that integrate with `ai-arena`.
 Current verification entrypoints:
 
 - `make verify-rust`
+- `AI_ARENA_DIR=/path/to/ai-arena make verify-release-artifacts`
 - `make verify-workflows`
 
-## Run A Local Match Through `arena-runner`
+## Build And Validate Official Artifacts
 
-The Phase 1 and Phase 2 integration path uses the tagged external runner plus a
-Reversi-owned game-master manifest overlay.
+The official Reversi game master and reference AI are separate WASM/WASI
+`arena-bundle/v1` ZIPs. Build deterministic development artifacts and validate
+the exact bytes with the pinned upstream contract:
+
+```sh
+AI_ARENA_DIR=/path/to/ai-arena make verify-release-artifacts
+```
+
+`AI_ARENA_DIR` must point at commit
+`7d23f225a2b4c8bd043c02b156a2e048603eab5b`. This creates `dist/` with
+`reversi-game-dev.arena.zip`, `reversi-rust-reference-ai-dev.arena.zip`, and
+`SHA256SUMS`. A GitHub tag or manual release runs the same verification and
+uploads those byte-identical assets.
+
+## Run A Native Development Match Through `arena-runner`
+
+The native manifest overlay below is only a local development convenience. It
+does not replace bundle validation or staging with the official WASM artifacts.
 
 1. Install the pinned runner:
 
