@@ -14,8 +14,11 @@ The goal is to keep the local and CI entrypoint identical:
 
 ## Tagged Runner Version
 
-- The pinned runner version for Phase 1 is
+- The pinned runner version for Phase 1 native-overlay verification is
   `github.com/yoskeoka/ai-arena/cmd/arena-runner@v0.2.0`.
+- Official bundle verification consumes commit
+  `bd2de02252e0e5925aa19402c1ee569588d05a10` of `yoskeoka/ai-arena`, which
+  provides the `--game-master-bundle` and `--player-bundle` runner inputs.
 - Version changes must be explicit in this repository rather than inherited
   from a sibling workspace checkout.
 
@@ -25,6 +28,10 @@ Official verification builds the two deterministic `arena-bundle/v1` ZIPs and
 passes their exact unpacked bytes through the pinned platform validator and
 WASI runner path. The native local-subprocess game-master manifest overlay is
 development-only and cannot satisfy release or staging acceptance.
+
+The bundle runner invocation uses the game ZIP once and the exact AI ZIP for
+two separately named players. Its standard `result-summary.json` and
+`exported-snapshot.json` must both report `completed`.
 
 ## Scope Limits
 

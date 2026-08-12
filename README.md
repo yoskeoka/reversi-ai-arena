@@ -19,11 +19,14 @@ the exact bytes with the pinned upstream contract:
 AI_ARENA_DIR=/path/to/ai-arena make verify-release-artifacts
 ```
 
+This command requires `jq` to check the runner artifacts.
+
 `AI_ARENA_DIR` must point at commit
-`7d23f225a2b4c8bd043c02b156a2e048603eab5b`. This creates `dist/` with
+`bd2de02252e0e5925aa19402c1ee569588d05a10`. This creates `dist/` with
 `reversi-game-dev.arena.zip`, `reversi-rust-reference-ai-dev.arena.zip`, and
-`SHA256SUMS`. A GitHub tag or manual release runs the same verification and
-uploads those byte-identical assets.
+`SHA256SUMS`, validates them, and completes a two-AI match by supplying those
+exact ZIPs to the upstream bundle runner. A GitHub tag or manual release runs
+the same verification and uploads those byte-identical assets.
 
 ## Run A Native Development Match Through `arena-runner`
 

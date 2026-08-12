@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           repository: yoskeoka/ai-arena
-          ref: 7d23f225a2b4c8bd043c02b156a2e048603eab5b
+          ref: bd2de02252e0e5925aa19402c1ee569588d05a10
           path: ai-arena
       - id: version
         env:
