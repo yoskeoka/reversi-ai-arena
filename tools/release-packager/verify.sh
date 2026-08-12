@@ -9,7 +9,8 @@ ai_arena_dir="${AI_ARENA_DIR:-$(cd "${repo_root}/../.." && pwd)/ai-arena}"
 "${repo_root}/tools/release-packager/package.sh" "${release_version}" "${output_dir}"
 output_dir="$(cd "${output_dir}" && pwd)"
 repeat_dir="$(mktemp -d)"
-trap 'rm -rf "${repeat_dir}"' EXIT
+runner_output_dir="$(mktemp -d)"
+trap 'rm -rf "${repeat_dir}" "${runner_output_dir}"' EXIT
 "${repo_root}/tools/release-packager/package.sh" "${release_version}" "${repeat_dir}"
 for bundle in "${output_dir}"/*.arena.zip; do
     cmp "${bundle}" "${repeat_dir}/$(basename "${bundle}")"
@@ -23,3 +24,20 @@ for bundle in "${output_dir}"/*.arena.zip; do
     actual="$(cd "${ai_arena_dir}" && GOCACHE="${GOCACHE:-/tmp/reversi-ai-arena-gocache}" go run ./cmd/arena-artifact validate "${bundle}")"
     test "${actual}" = "${expected}"
 done
+
+game_bundle="${output_dir}/reversi-game-${release_version}.arena.zip"
+ai_bundle="${output_dir}/reversi-rust-reference-ai-${release_version}.arena.zip"
+match_id="release-artifact-bundles"
+(
+    cd "${ai_arena_dir}"
+    GOCACHE="${GOCACHE:-/tmp/reversi-ai-arena-gocache}" go run ./cmd/arena-runner \
+        --game-master-bundle "${game_bundle}" \
+        --player-bundle "black=${ai_bundle}" \
+        --player-bundle "white=${ai_bundle}" \
+        --match-id "${match_id}" \
+        --output-dir "${runner_output_dir}" \
+        --log-output none \
+        --match-timeout 1m
+)
+jq -e '.status == "completed"' "${runner_output_dir}/${match_id}/result-summary.json" >/dev/null
+jq -e '.status == "completed"' "${runner_output_dir}/${match_id}/exported-snapshot.json" >/dev/null
