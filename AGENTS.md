@@ -37,7 +37,20 @@ This repository follows the AI-Centered Development workflow.
    - Spec First: update `docs/specs/` before modifying code.
    - Focus: if unrelated problems are found, log them under `docs/issues/`
      instead of silently expanding scope.
-   - Completion: when a task is done, move its plan from `todo/` to `done/`.
+   - Completion: when a task is done, delete its plan and any explicitly
+     linked resolved local issues in the implementation branch. Retrieve the
+     completion record from the implementation PR or Git history.
+
+## Workflow Artifact Retention
+
+- Keep normal repository search focused on active `docs/exec-plan/todo/`
+  plans and unresolved `docs/issues/` issues.
+- Do not move completed plans or resolved linked local issues to checked-out
+  `done/` directories. Delete them in the implementation branch after
+  verification and PR preparation.
+- Record durable decisions, contracts, and operational knowledge in
+  specifications, ADRs, code, or appropriate development documentation
+  instead of copying task-tracker history.
 
 ## Repository Language Policy
 

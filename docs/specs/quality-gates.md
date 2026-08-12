@@ -21,6 +21,23 @@ Run these commands from the repository root:
 - `make verify-rust`: run the required Rust verification path for this phase
 - `make verify-workflows`: run repository-local workflow lint checks
 
+## Workflow Artifact Retention
+
+Workflow checks expose only active work in the checkout:
+
+- Active execution plans remain under `docs/exec-plan/todo/`, and unresolved
+  local issues remain under `docs/issues/`.
+- A matching `feat/<name>` or `fix/<name>` branch may close its plan by deleting
+  the matching file. The workflow linter reads that deleted plan from the
+  merge-base side of the branch diff to validate its completion metadata.
+- Local issues explicitly listed by the deleted plan must be deleted in the
+  same branch unless the PR body explains why an issue remains open.
+- External GitHub issues listed by the deleted plan must have matching PR-body
+  closing metadata, unless the PR body explains why an issue remains open.
+- Completed plans and resolved local issues are retrieved from the plan PR,
+  implementation PR, or Git history rather than a checked-out `done/`
+  directory.
+
 ## Minimum Pre-PR Verification
 
 - PRs that touch `games/reversi/**`, `players/rust-reference/**`, `cmd/**`,
