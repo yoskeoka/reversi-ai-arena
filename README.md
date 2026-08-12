@@ -19,6 +19,8 @@ the exact bytes with the pinned upstream contract:
 AI_ARENA_DIR=/path/to/ai-arena make verify-release-artifacts
 ```
 
+This command requires `jq` to check the runner artifacts.
+
 `AI_ARENA_DIR` must point at commit
 `bd2de02252e0e5925aa19402c1ee569588d05a10`. This creates `dist/` with
 `reversi-game-dev.arena.zip`, `reversi-rust-reference-ai-dev.arena.zip`, and
