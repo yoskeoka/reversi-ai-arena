@@ -13,16 +13,14 @@ Completion is a versioned-public-fixture normalizer and immutable replay model, 
 state, and browser end-to-end verification. Fetching an ai-arena public resource or polling a running match is excluded; those require the later
 platform-connection plan after both repositories complete their first delivery.
 
-## Required Review Decision
+## Selected Browser Boundary
 
-Do not source-copy the Rust filesystem-oriented kifu helper into browser code. Before `/execute-task`, plan review must select one browser boundary
-and record its rationale, ownership, and version compatibility in `docs/specs/visualizer-architecture.md`:
+The browser boundary is a versioned neutral DTO normalized in TypeScript. Reversi owns checked-in shared public JSON fixtures, generated only from
+Phase 8 A's public envelope/final exported snapshot contract, and verifies Rust/browser parity against those fixtures. The Rust filesystem-oriented
+kifu helper is neither source-copied nor invoked by browser code; verified WASM and a separate canonical fixture parser are rejected for this first
+delivery because they add a toolchain/bundle or duplicate-parser boundary without helping the artifact-first viewer.
 
-1. Normalize a versioned neutral DTO in TypeScript and verify Rust/browser parity through common fixtures.
-2. Make a shared JSON fixture the canonical exchange, with independently implemented Rust and TypeScript parsers verified by golden parity.
-3. Introduce a verified WASM bridge and verify bundle size, failure behavior, and version parity.
-
-Until this selection is made, do not add React, a Reversi-specific backend endpoint, or a private artifact loader.
+No React, Reversi-specific backend endpoint, private artifact loader, browser filesystem access, or alternative pre-A envelope/version is allowed.
 
 ## Existing References
 
@@ -36,11 +34,15 @@ Until this selection is made, do not add React, a Reversi-specific backend endpo
 - `visualizer/src/main.ts:1-20` and `visualizer/src/style.css`: the current surface is a scaffold without replay model, board renderer, or controls.
 - `ai-arena/docs/exec-plan/todo/0126-phase8-public-state-and-reversi-visualizer.md`: Phase 8 A supplies the terminal public replay envelope,
   final exported snapshot, and versioned cross-repository public fixture.
+- `docs/specs/reversi-game-master.md:90-144`: an immediate-loss turn is a valid completed terminal outcome with `current_player = null` and a
+  surviving winner; it is not a canceled or malformed replay by itself.
+- `visualizer/package.json:1-15` and `.github/workflows/visualizer-ci.yml:1-30`: the current Vite surface has no unit/browser test command or
+  runner, and CI currently runs only typecheck/build.
 
 ## Change Map
 
 - `(MODIFY) docs/specs/visualizer-architecture.md` and `(MODIFY) docs/specs/artifact-kifu-export.md`:
-  define public replay input, final-exported-snapshot consistency, replay format/version compatibility, the selected browser boundary, and error
+  define public replay input, final-exported-snapshot consistency, replay format/version compatibility, the selected TypeScript DTO/shared-fixture boundary, and error
   behavior. Keep private-artifact precedence restricted to the local helper.
 - `(NEW) visualizer/src/replay/*`:
   implement the public-envelope decoder, format/version validator, immutable Reversi replay model, and turn-step/seek/playback reducer.
@@ -48,7 +50,11 @@ Until this selection is made, do not add React, a Reversi-specific backend endpo
   implement the Phaser board scene and playback controls. Provide current turn/player, score, result, and errors as text outside the canvas.
 - `(MODIFY) visualizer/src/main.ts` and `(MODIFY) visualizer/src/style.css`:
   replace the scaffold with the viewer shell and local public-fixture load/error state.
-- `(NEW) visualizer/src/replay/*.test.ts`, fixtures, and browser E2E:
+- `(MODIFY) visualizer/package.json`、`visualizer/package-lock.json`、`.github/workflows/visualizer-ci.yml` と `(NEW) visualizer/vitest.config.ts`、
+  `visualizer/playwright.config.ts`:
+  add reproducible unit and browser E2E scripts, pinned test dependencies, browser installation/cache, and CI commands so state/unit, browser E2E,
+  and accessible-DOM assertions are executable and required.
+- `(NEW) visualizer/src/replay/*.test.ts`, `visualizer/e2e/*`, and Reversi-owned public fixtures:
   add placement/pass-bearing, terminal-failure, malformed, and version-mismatch fixtures, state goldens, and the browser replay path.
 - `(DELETE)`: N/A. Do not relax the Rust kifu CLI/local audit input contract for the public viewer or introduce React, private artifact access,
   or a network bypass.
@@ -57,8 +63,9 @@ Until this selection is made, do not add React, a Reversi-specific backend endpo
 
 - Given only A's terminal public replay payload and final exported snapshot, the viewer reconstructs a legal progression from the initial board to
   terminal board. Accepted placements and explicit accepted passes remain lossless; non-turn and non-accepted outcomes are never rendered as moves.
-- The viewer supports previous/next turn, play/pause, seek, pass, score/current player, and terminal result. Malformed input, unsupported
-  format/version, and failed/canceled terminal outcomes render an explainable error without guessing board state.
+- The viewer supports previous/next turn, play/pause, seek, pass, score/current player, and terminal result. A completed immediate-loss terminal
+  with its valid surviving winner is rendered as a terminal result even though its final action failed. Malformed input, unsupported format/version,
+  canceled/incomplete terminal outcome, or transcript/final-snapshot inconsistency render an explainable error without guessing board state.
 - The replay model is immutable: seek and playback never mutate prior model state. A final snapshot that conflicts with the transcript is rejected as
   a valid replay.
 - Phaser is limited to board rendering. Controls, summary, and errors are semantic HTML text with keyboard-accessible controls. React, browser
@@ -66,21 +73,24 @@ Until this selection is made, do not add React, a Reversi-specific backend endpo
 
 ## Implementation Order and Dependencies
 
-1. Select the browser boundary in review and make the public envelope/fixture/version compatibility and failure behavior explicit in the specs.
-2. Implement the selected decoder/normalizer and immutable replay reducer from placement/pass/failure fixtures.
+1. Consume A's merged versioned public envelope/schema and final exported-snapshot fixture; record the exact compatible versions and the selected
+   TypeScript DTO/shared-fixture boundary in the specs. Do not begin decoder work against a guessed envelope.
+2. Implement the selected decoder/normalizer and immutable replay reducer from placement/pass/immediate-loss/failure fixtures.
 3. Establish Phaser-independent state tests and fixture parity, then connect the board scene and controls to the reducer.
 4. Implement fixture load, semantic summary, and error rendering in the shell; verify the complete terminal replay through browser E2E.
-5. Consume A's public fixture/final exported snapshot and update version compatibility plus final-state consistency checks.
+5. Wire the unit/browser test runners into package scripts and CI, then verify A fixture compatibility and final-state consistency on the required
+   CI lane.
 
-Steps 2 and 3's renderer/control work may proceed in parallel once the reducer contract is fixed. A's HTTP resource is not a dependency, but no
-alternative envelope/version may be fixed ahead of A's versioned fixture. Network fetch and polling belong to the later platform-connection plan.
+Steps 2 and 3's renderer/control work may proceed in parallel once A's fixture and the reducer contract are fixed. A's HTTP resource is not a
+dependency. Network fetch and polling belong to the later platform-connection plan.
 
 ## Verification
 
-- Verify selected-boundary Rust/TypeScript fixture parity, and WASM bundle compatibility when that boundary is selected, for every versioned fixture.
-- Use replay-reducer goldens for accepted placement, explicit pass, seek/play/pause, final score/player/result, and input immutability. Add negative
-  coverage for malformed data, unsupported version, early failed/canceled result, and final-snapshot mismatch.
-- Run Phaser-independent unit tests, `npm run typecheck`, `npm run build`, and browser E2E from load through terminal replay.
+- Verify the selected TypeScript DTO/Rust fixture parity for every versioned public fixture.
+- Use replay-reducer goldens for accepted placement, explicit pass, valid immediate-loss result, seek/play/pause, final score/player/result, and
+  input immutability. Add negative coverage for malformed data, unsupported version, canceled/incomplete result, and final-snapshot mismatch.
+- Run the new Phaser-independent unit script, `npm run typecheck`, `npm run build`, and the new browser E2E script from load through terminal replay;
+  CI must run all of them.
 - Assert a non-canvas text summary, keyboard control, and error announcement with browser/accessible-DOM tests.
 - Inspect browser request logs to prove no request for `record.json`, `history.json`, private storage locators, or Reversi-specific backend endpoints.
 
