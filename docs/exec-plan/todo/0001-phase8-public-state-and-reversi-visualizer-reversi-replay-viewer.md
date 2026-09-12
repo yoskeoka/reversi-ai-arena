@@ -13,14 +13,22 @@ Completion is a versioned-public-fixture normalizer and immutable replay model, 
 state, and browser end-to-end verification. Fetching an ai-arena public resource or polling a running match is excluded; those require the later
 platform-connection plan after both repositories complete their first delivery.
 
-## Selected Browser Boundary
+## Browser Boundary Decision Required
 
-The browser boundary is a versioned neutral DTO normalized in TypeScript. Reversi owns checked-in shared public JSON fixtures, generated only from
-Phase 8 A's public envelope/final exported snapshot contract, and verifies Rust/browser parity against those fixtures. The Rust filesystem-oriented
-kifu helper is neither source-copied nor invoked by browser code; verified WASM and a separate canonical fixture parser are rejected for this first
-delivery because they add a toolchain/bundle or duplicate-parser boundary without helping the artifact-first viewer.
+Do not source-copy the Rust filesystem-oriented kifu helper into browser code. Human review must select one boundary after A's public envelope and
+fixture are available; record the selected rationale, ownership, and version compatibility in `docs/specs/visualizer-architecture.md` before
+`/execute-task`.
 
-No React, Reversi-specific backend endpoint, private artifact loader, browser filesystem access, or alternative pre-A envelope/version is allowed.
+1. **Versioned neutral DTO in TypeScript plus shared public fixtures**: browser code owns a small normalizer; Reversi owns checked-in fixtures
+   generated from A's public envelope and verifies Rust/browser parity. This is the smallest web toolchain and keeps browser code independent of
+   Rust, but requires maintaining a TypeScript decoder.
+2. **Shared JSON fixture as canonical exchange with independent parsers**: Rust and TypeScript independently parse the same versioned fixtures.
+   It gives strong compatibility evidence, but duplicates parsing semantics and can drift unless golden coverage is kept strict.
+3. **Verified WASM bridge**: browser code invokes a Rust-owned parser/normalizer compiled to WASM. It minimizes duplicate parser logic, but adds
+   a Rust-to-browser build chain, bundle-size/startup budget, browser failure modes, and ABI/version testing.
+
+All choices exclude React, Reversi-specific backend endpoints, private artifact loaders, browser filesystem access, and an alternative pre-A
+envelope/version.
 
 ## Existing References
 
@@ -44,8 +52,8 @@ No React, Reversi-specific backend endpoint, private artifact loader, browser fi
 ## Change Map
 
 - `(MODIFY) docs/specs/visualizer-architecture.md` and `(MODIFY) docs/specs/artifact-kifu-export.md`:
-  document consumer-side validation of A-owned public envelope/schema/version, final-exported-snapshot consistency, the selected TypeScript
-  DTO/shared-fixture boundary, and error behavior. Only Reversi's opaque payload meaning belongs here; field-level public envelope definition
+  document consumer-side validation of A-owned public envelope/schema/version, final-exported-snapshot consistency, the selected boundary, and
+  error behavior. Only Reversi's opaque payload meaning belongs here; field-level public envelope definition
   remains in ai-arena A. Keep private-artifact precedence restricted to the local helper.
 - `(NEW) visualizer/src/replay/*`:
   implement the public-envelope decoder, format/version validator, immutable Reversi replay model, and turn-step/seek/playback reducer.
@@ -78,8 +86,8 @@ No React, Reversi-specific backend endpoint, private artifact loader, browser fi
 
 ## Implementation Order and Dependencies
 
-1. Consume A's merged versioned public envelope/schema and final exported-snapshot fixture; record the exact compatible versions and the selected
-   TypeScript DTO/shared-fixture boundary in the specs. Do not begin decoder work against a guessed envelope.
+1. Select the browser boundary in human review, then consume A's merged versioned public envelope/schema and final exported-snapshot fixture.
+   Record exact compatible versions and the selected boundary in the specs. Do not begin decoder work against a guessed envelope.
 2. Implement the selected decoder/normalizer and immutable replay reducer from placement/pass/immediate-loss/failure fixtures.
 3. Establish Phaser-independent state tests and fixture parity, then connect the board scene and controls to the reducer.
 4. Implement fixture load, semantic summary, and error rendering in the shell; verify the complete terminal replay through browser E2E.
@@ -91,7 +99,7 @@ dependency. Network fetch and polling belong to the later platform-connection pl
 
 ## Verification
 
-- Verify the selected TypeScript DTO/Rust fixture parity for every versioned public fixture.
+- Verify the selected boundary's compatibility contract for every versioned public fixture.
 - Use replay-reducer goldens for accepted placement, explicit pass, valid immediate-loss result, seek/play/pause, final score/player/result, and
   input immutability. Add negative coverage for malformed data, unsupported version, canceled/incomplete result, and final-snapshot mismatch.
 - Run the new Phaser-independent unit script, `npm run typecheck`, `npm run build`, and the new browser E2E script from load through terminal replay;
