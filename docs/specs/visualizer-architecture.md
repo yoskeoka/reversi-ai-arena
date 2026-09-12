@@ -2,8 +2,9 @@
 
 ## Purpose
 
-The initial visualizer is a replay-first browser client for runner-exported
-match artifacts.
+The initial visualizer is a replay-first browser client for public exported
+match state. It is an optional program owned and hosted by the game provider,
+not a program that `ai-arena` hosts or executes.
 
 ## Architecture
 
@@ -12,6 +13,9 @@ match artifacts.
   layout outside the canvas.
 - The shell should prefer web-standard APIs and minimal tooling rather than a
   heavy component framework.
+- The Reversi provider builds and hosts the static application separately from
+  `ai-arena`; its configured API base URL points only to documented public
+  spectator resources.
 
 ## Packaging Rule
 
@@ -23,10 +27,13 @@ match artifacts.
 
 ## Data Contract
 
-- The initial client reads exported JSON artifacts produced by the runner path.
+- The initial client reads versioned exported-state and public replay JSON from
+  `ai-arena`'s anonymous public API; checked-in equivalent fixtures support
+  offline verification.
 - The client may reuse the Reversi-owned artifact parsing and transcript core
   introduced for kifu export rather than reimplementing runner-artifact
   decoding from scratch.
 - Replay input must be reconstructible without private engine state.
-- Real-time watch support is a later phase that must consume future
-  spectator-facing public APIs rather than a Reversi-specific bypass.
+- Snapshot polling for an in-progress match consumes the same public API and
+  discards stale versions; it stops at terminal lifecycle. Event streaming is
+  a later phase, not a Reversi-specific bypass.

@@ -5,30 +5,25 @@ Addresses: N/A
 
 ## Objective and Completion Boundary
 
-Implement an artifact-first browser replay viewer in `reversi-ai-arena` that accepts only Phase 8 A's terminal public replay payload and final
-exported snapshot. It replays board progression from the initial position through terminal state, including accepted placements, explicit passes,
-score, current player, and terminal result. It has no dependency on private engine state, `record.json`, `history.json`, or browser filesystem access.
+Implement an artifact-first browser replay viewer in `reversi-ai-arena` that the Reversi provider can host separately from ai-arena. It accepts
+only Phase 8 A's anonymous terminal public replay payload and final exported snapshot. It replays board progression from the initial position
+through terminal state, including accepted placements, explicit passes, score, current player, and terminal result. It has no dependency on private
+engine state, `record.json`, `history.json`, browser filesystem access, or an ai-arena-hosted visualizer runtime.
 
-Completion is a versioned-public-fixture normalizer and immutable replay model, a Phaser board renderer with web-standard controls, and parser,
-state, and browser end-to-end verification. Fetching an ai-arena public resource or polling a running match is excluded; those require the later
-platform-connection plan after both repositories complete their first delivery.
+Completion is a versioned-public-fixture normalizer and immutable replay model, a Phaser board renderer with web-standard controls, an anonymous
+public API loader / polling adapter, and parser, state, and browser end-to-end verification. The resulting Vite build is a deployable static
+reference viewer owned and hosted by the Reversi provider; ai-arena does not receive, static-link, or execute its program.
 
-## Browser Boundary Decision Required
+## Fixed Browser Boundary
 
-Do not source-copy the Rust filesystem-oriented kifu helper into browser code. Human review must select one boundary after A's public envelope and
-fixture are available; record the selected rationale, ownership, and version compatibility in `docs/specs/visualizer-architecture.md` before
-`/execute-task`.
+Select **a versioned neutral DTO in TypeScript plus shared public fixtures**. The browser owns a small TypeScript normalizer and Reversi owns
+checked-in fixtures generated from A's public envelope, with Rust/browser parity verified by goldens. This is the smallest dependency for the
+official Vite/Phaser reference viewer and keeps the viewer independently hostable by the game provider.
 
-1. **Versioned neutral DTO in TypeScript plus shared public fixtures**: browser code owns a small normalizer; Reversi owns checked-in fixtures
-   generated from A's public envelope and verifies Rust/browser parity. This is the smallest web toolchain and keeps browser code independent of
-   Rust, but requires maintaining a TypeScript decoder.
-2. **Shared JSON fixture as canonical exchange with independent parsers**: Rust and TypeScript independently parse the same versioned fixtures.
-   It gives strong compatibility evidence, but duplicates parsing semantics and can drift unless golden coverage is kept strict.
-3. **Verified WASM bridge**: browser code invokes a Rust-owned parser/normalizer compiled to WASM. It minimizes duplicate parser logic, but adds
-   a Rust-to-browser build chain, bundle-size/startup budget, browser failure modes, and ABI/version testing.
-
-All choices exclude React, Reversi-specific backend endpoints, private artifact loaders, browser filesystem access, and an alternative pre-A
-envelope/version.
+WASM is not selected for this delivery: ai-arena is not loading a game-provided visualizer as a plugin, so it needs no dynamic visualizer ABI.
+The TypeScript decision does not constrain a future native or CLI Reversi viewer, nor the deferred platform-hosted visualizer issue. Do not
+source-copy the Rust filesystem-oriented kifu helper into browser code. React, Reversi-specific backend endpoints, private artifact loaders,
+browser filesystem access, and an alternative pre-A envelope/version remain excluded.
 
 ## Existing References
 
@@ -36,7 +31,7 @@ envelope/version.
   artifact-driven replay; Phase 4 is separately gated on public spectator APIs.
 - `docs/specs/platform-boundary.md:1-30`: Reversi consumes public platform contracts and must not depend on internal match state.
 - `docs/specs/visualizer-architecture.md:5-32` and `visualizer/README.md:1-6`: Vite + TypeScript owns the shell, Phaser owns board rendering,
-  and real-time support must use future public APIs.
+  the Reversi provider owns hosting, and real-time support consumes public APIs.
 - `docs/specs/artifact-kifu-export.md:20-80`: the local helper preserves accepted placement and explicit pass, but its `record.json` / `history.json`
   input precedence is not a public-viewer input contract.
 - `visualizer/src/main.ts:1-20` and `visualizer/src/style.css`: the current surface is a scaffold without replay model, board renderer, or controls.
@@ -53,14 +48,19 @@ envelope/version.
 
 - `(MODIFY) docs/specs/visualizer-architecture.md` and `(MODIFY) docs/specs/artifact-kifu-export.md`:
   document consumer-side validation of A-owned public envelope/schema/version, final-exported-snapshot consistency, the selected boundary, and
-  error behavior. Only Reversi's opaque payload meaning belongs here; field-level public envelope definition
-  remains in ai-arena A. Keep private-artifact precedence restricted to the local helper.
+  error behavior. Record that the static browser application is hosted by the Reversi provider and uses credential-free public API reads; it is
+  not an ai-arena plugin. Only Reversi's opaque payload meaning belongs here; field-level public envelope definition remains in ai-arena A.
+  Keep private-artifact precedence restricted to the local helper.
 - `(NEW) visualizer/src/replay/*`:
   implement the public-envelope decoder, format/version validator, immutable Reversi replay model, and turn-step/seek/playback reducer.
+- `(NEW) visualizer/src/api/*`:
+  implement a configured public API base URL / `match_id` loader and polling adapter. It reads only A's documented anonymous `GET` resources,
+  rejects stale `(selected_run_id, version)` responses, stops at terminal lifecycle, and gives a documented unavailable / network error without
+  falling back to private artifacts or credentials.
 - `(NEW) visualizer/src/renderer/*` and `(NEW) visualizer/src/controls/*`:
   implement the Phaser board scene and playback controls. Provide current turn/player, score, result, and errors as text outside the canvas.
 - `(MODIFY) visualizer/src/main.ts` and `(MODIFY) visualizer/src/style.css`:
-  replace the scaffold with the viewer shell and local public-fixture load/error state.
+  replace the scaffold with the viewer shell, local public-fixture load/error state, and configured public API load/error state.
 - `(MODIFY) visualizer/package.json`、`visualizer/package-lock.json`、`.github/workflows/visualizer-ci.yml` と `(NEW) visualizer/vitest.config.ts`、
   `visualizer/playwright.config.ts`:
   add reproducible unit and browser E2E scripts, pinned test dependencies, browser installation/cache, and CI commands so state/unit, browser E2E,
@@ -82,20 +82,23 @@ envelope/version.
 - The replay model is immutable: seek and playback never mutate prior model state. A final snapshot that conflicts with the transcript is rejected as
   a valid replay.
 - Phaser is limited to board rendering. Controls, summary, and errors are semantic HTML text with keyboard-accessible controls. React, browser
-  filesystem reads, private storage locators, and Reversi-specific platform APIs are out of scope.
+  filesystem reads, private storage locators, credentials, and Reversi-specific platform APIs are out of scope. The separately hosted web
+  application reads A's anonymous public API with a configured base URL; it never assumes ai-arena serves its assets.
 
 ## Implementation Order and Dependencies
 
-1. Select the browser boundary in human review, then consume A's merged versioned public envelope/schema and final exported-snapshot fixture.
-   Record exact compatible versions and the selected boundary in the specs. Do not begin decoder work against a guessed envelope.
+1. Consume A's merged versioned public envelope/schema and final exported-snapshot fixture. Record exact compatible versions, the TypeScript
+   normalizer boundary, provider hosting boundary, and API base-URL configuration in the specs. Do not begin decoder or fetch work against a
+   guessed envelope.
 2. Implement the selected decoder/normalizer and immutable replay reducer from placement/pass/immediate-loss/failure fixtures.
 3. Establish Phaser-independent state tests and fixture parity, then connect the board scene and controls to the reducer.
-4. Implement fixture load, semantic summary, and error rendering in the shell; verify the complete terminal replay through browser E2E.
-5. Wire the unit/browser test runners into package scripts and CI, then verify A fixture compatibility and final-state consistency on the required
-   CI lane.
+4. Implement fixture load plus anonymous public API load / polling, semantic summary, and error rendering in the shell; verify completed replay
+   and running-to-terminal state through browser E2E.
+5. Wire the unit/browser test runners into package scripts and CI, then verify A fixture compatibility, public request boundary, and final-state
+   consistency on the required CI lane.
 
-Steps 2 and 3's renderer/control work may proceed in parallel once A's fixture and the reducer contract are fixed. A's HTTP resource is not a
-dependency. Network fetch and polling belong to the later platform-connection plan.
+Steps 2 and 3's renderer/control work may proceed in parallel once A's fixture and the reducer contract are fixed. API adapter work begins after
+A's anonymous HTTP contract is merged. Access protection is explicitly deferred to the later ai-arena `0128` parent plan.
 
 ## Verification
 
@@ -105,11 +108,13 @@ dependency. Network fetch and polling belong to the later platform-connection pl
 - Run the new Phaser-independent unit script, `npm run typecheck`, `npm run build`, and the new browser E2E script from load through terminal replay;
   CI must run all of them.
 - Assert a non-canvas text summary, keyboard control, and error announcement with browser/accessible-DOM tests.
-- Inspect browser request logs to prove no request for `record.json`, `history.json`, private storage locators, or Reversi-specific backend endpoints.
+- Verify a separately served static build loads the configured anonymous public API base URL, drops stale response, stops polling after terminal,
+  and renders documented unavailable / network errors without credentials. Inspect browser request logs to prove no request for `record.json`,
+  `history.json`, private storage locators, cookies/tokens, or Reversi-specific backend endpoints.
 
 ## Follow-up
 
 After A and this plan are implemented and merged, create the detailed C execution plan from the intentional parent that will be added by
 [ai-arena PR #348](https://github.com/yoskeoka/ai-arena/pull/348) at
-`docs/exec-plan/todo/0128-phase8-public-state-and-reversi-visualizer-platform-connection.md`. It will cover the public resource adapter,
-stale-response discard, and terminal polling stop.
+`docs/exec-plan/todo/0128-phase8-public-state-and-reversi-visualizer-platform-connection.md`. It will cover protected access for external
+visualizer and non-browser consumers; it must not replace the anonymous first delivery without a reviewed migration contract.
