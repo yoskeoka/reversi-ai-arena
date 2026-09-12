@@ -142,8 +142,9 @@ tools that are needed to operate Reversi as a registered game.
       support optional and lightweight for samples or verification helpers.
 - [x] Release artifacts: publish deterministic WASM/WASI game and Rust
       reference-AI `arena-bundle/v1` assets for platform registration.
-- [ ] Phase 3: Build a replay visualizer that reads exported runner artifacts
-      and replays completed matches with Phaser-rendered game screens.
+- [ ] Phase 3: Build a separately hostable Reversi reference replay visualizer
+      that reads public exported-state API responses and replays completed
+      matches with Phaser-rendered game screens.
 - [ ] Phase 4: Integrate a real-time watcher after the platform exposes the
       required spectator-facing game-state API.
 - [ ] Phase 5: Publish external game-master guidance and sample documentation
@@ -159,8 +160,10 @@ tools that are needed to operate Reversi as a registered game.
   than only a local prototype.
 - Phase 2 treats constrained AI implementation itself as part of the value of
   the project, not just a support artifact for the game master.
-- Phase 3 focuses on artifact-driven replay first because that is useful even
-  before the platform's live spectator APIs are ready.
+- Phase 3 focuses on public artifact-driven replay first. The Reversi provider
+  owns the optional static viewer and may host it separately from `ai-arena`;
+  this keeps the platform game-agnostic while still providing a reference
+  spectator experience.
 - Phase 4 is explicitly gated on platform capability and should consume public
   spectator APIs rather than introducing a Reversi-specific bypass.
 - Phase 5 turns Reversi into a practical external-game-master example for
