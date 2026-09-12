@@ -32,8 +32,10 @@ No React, Reversi-specific backend endpoint, private artifact loader, browser fi
 - `docs/specs/artifact-kifu-export.md:20-80`: the local helper preserves accepted placement and explicit pass, but its `record.json` / `history.json`
   input precedence is not a public-viewer input contract.
 - `visualizer/src/main.ts:1-20` and `visualizer/src/style.css`: the current surface is a scaffold without replay model, board renderer, or controls.
-- `ai-arena/docs/exec-plan/todo/0126-phase8-public-state-and-reversi-visualizer.md`: Phase 8 A supplies the terminal public replay envelope,
-  final exported snapshot, and versioned cross-repository public fixture.
+- [ai-arena PR #348](https://github.com/yoskeoka/ai-arena/pull/348) (its merge target is
+  `docs/exec-plan/todo/0126-phase8-public-state-and-reversi-visualizer.md`): Phase 8 A supplies the terminal public replay envelope, final
+  exported snapshot, and versioned cross-repository public fixture. This plan must not execute until the A implementation PR planned from that file
+  has merged.
 - `docs/specs/reversi-game-master.md:90-144`: an immediate-loss turn is a valid completed terminal outcome with `current_player = null` and a
   surviving winner; it is not a canceled or malformed replay by itself.
 - `visualizer/package.json:1-15` and `.github/workflows/visualizer-ci.yml:1-30`: the current Vite surface has no unit/browser test command or
@@ -42,8 +44,9 @@ No React, Reversi-specific backend endpoint, private artifact loader, browser fi
 ## Change Map
 
 - `(MODIFY) docs/specs/visualizer-architecture.md` and `(MODIFY) docs/specs/artifact-kifu-export.md`:
-  define public replay input, final-exported-snapshot consistency, replay format/version compatibility, the selected TypeScript DTO/shared-fixture boundary, and error
-  behavior. Keep private-artifact precedence restricted to the local helper.
+  document consumer-side validation of A-owned public envelope/schema/version, final-exported-snapshot consistency, the selected TypeScript
+  DTO/shared-fixture boundary, and error behavior. Only Reversi's opaque payload meaning belongs here; field-level public envelope definition
+  remains in ai-arena A. Keep private-artifact precedence restricted to the local helper.
 - `(NEW) visualizer/src/replay/*`:
   implement the public-envelope decoder, format/version validator, immutable Reversi replay model, and turn-step/seek/playback reducer.
 - `(NEW) visualizer/src/renderer/*` and `(NEW) visualizer/src/controls/*`:
@@ -61,8 +64,10 @@ No React, Reversi-specific backend endpoint, private artifact loader, browser fi
 
 ## Black-box Contract
 
-- Given only A's terminal public replay payload and final exported snapshot, the viewer reconstructs a legal progression from the initial board to
-  terminal board. Accepted placements and explicit accepted passes remain lossless; non-turn and non-accepted outcomes are never rendered as moves.
+- Given only A's terminal public replay payload and final exported snapshot, the viewer validates the Reversi-owned opaque replay payload's
+  `board_size`, `opening`, and `ruleset` initial-position parameters before reconstructing a legal progression from the specified initial board to
+  terminal board. Unknown/incompatible initial-position parameters are rejected rather than silently using a four-disc standard opening. Accepted
+  placements and explicit accepted passes remain lossless; non-turn and non-accepted outcomes are never rendered as moves.
 - The viewer supports previous/next turn, play/pause, seek, pass, score/current player, and terminal result. A completed immediate-loss terminal
   with its valid surviving winner is rendered as a terminal result even though its final action failed. Malformed input, unsupported format/version,
   canceled/incomplete terminal outcome, or transcript/final-snapshot inconsistency render an explainable error without guessing board state.
@@ -96,6 +101,7 @@ dependency. Network fetch and polling belong to the later platform-connection pl
 
 ## Follow-up
 
-After A and this plan are implemented and merged, split ai-arena's
-`docs/exec-plan/todo/0128-phase8-public-state-and-reversi-visualizer-platform-connection.md` into a detailed execution plan for the public
-resource adapter, stale-response discard, and terminal polling stop.
+After A and this plan are implemented and merged, create the detailed C execution plan from the intentional parent that will be added by
+[ai-arena PR #348](https://github.com/yoskeoka/ai-arena/pull/348) at
+`docs/exec-plan/todo/0128-phase8-public-state-and-reversi-visualizer-platform-connection.md`. It will cover the public resource adapter,
+stale-response discard, and terminal polling stop.
