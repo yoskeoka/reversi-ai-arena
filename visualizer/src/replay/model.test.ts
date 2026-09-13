@@ -13,8 +13,13 @@ describe("public Reversi replay", () => {
     expect(model.frames).toHaveLength(2);
     expect(model.frames[0].board[2][3]).toBe("empty");
     expect(model.final.scores).toEqual({ black: 4, white: 1 });
+    expect(Object.isFrozen(model.frames[0].board)).toBe(true);
+    expect(Object.isFrozen(model.frames[0].board[0])).toBe(true);
   });
   it("rejects incompatible replay data", () => {
     expect(() => buildReplay({ board_size: 4, opening: [], ruleset: "standard", turns: [] }, {})).toThrow("unsupported");
+  });
+  it("rejects a non-standard opening", () => {
+    expect(() => buildReplay({ board_size: 8, opening: [], ruleset: "standard", turns: [] }, {})).toThrow("opening");
   });
 });

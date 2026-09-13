@@ -125,6 +125,8 @@ recomputing from logs alone, including:
 - current turn number
 - consecutive forced-pass count
 - last accepted or failed action status per player
+- accepted public replay turns, so a resumed completed match publishes a full
+  transcript rather than only post-resume turns
 - terminal winner or failure state when already completed
 
 The exported snapshot must preserve only public replay-safe data:

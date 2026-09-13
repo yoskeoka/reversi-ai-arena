@@ -7,7 +7,7 @@ export type PublicReplayResponse = { availability: string; format?: string; vers
 export async function loadReplay(baseUrl: string, matchId: string, fetcher = fetch): Promise<ReplayModel> {
   const base = baseUrl.replace(/\/$/, "");
   const [match, state, replay] = await Promise.all([json<PublicMatch>(`${base}/api/v1-alpha/public/matches/${encodeURIComponent(matchId)}`, fetcher), json<PublicStateResponse>(`${base}/api/v1-alpha/public/matches/${encodeURIComponent(matchId)}/state`, fetcher), json<PublicReplayResponse>(`${base}/api/v1-alpha/public/matches/${encodeURIComponent(matchId)}/replay`, fetcher)]);
-  if (match.lifecycle_state !== "completed" || state.availability !== "available" || replay.availability !== "available" || replay.format !== "reversi/replay" || replay.version !== "1") throw new Error("public replay is unavailable for this match");
+  if (match.lifecycle_state !== "completed" || state.selected_run_id !== match.selected_run_id || state.lifecycle_state !== match.lifecycle_state || state.availability !== "available" || replay.availability !== "available" || replay.format !== "reversi/replay" || replay.version !== "1") throw new Error("public replay is unavailable for this match");
   return buildReplay(replay.payload, { status: match.lifecycle_state, public_state: state.public_state });
 }
 
