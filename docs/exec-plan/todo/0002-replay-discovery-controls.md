@@ -1,13 +1,13 @@
 # replay-discovery-controls
 > **Execution**: Use `/execute-task` to implement this plan. After implementation is complete, use `/review-task` to prepare and create the PR.
 
-Addresses: https://github.com/yoskeoka/reversi-ai-arena/issues/41
+Addresses: N/A
 
 ## Objective and completion boundary
 
 Make the externally hosted Reversi replay visualizer usable without manually constructing a `match` URL: the user selects an ai-arena base URL and then a completed public Reversi match. Loading that match continues to use ai-arena's automatic official/current selected run; the viewer never presents a run-ID selector.
 
-The base URL selector contains `local`, `stg`, and `prod`. A valid `?api=` URL, even if not a built-in option, is represented as the selected custom value on initial load. A `?match=` remains a deep-link default, with its associated API base. Ruleset selection is explicitly deferred to issue #41; this delivery supports the current standard ruleset only.
+The base URL selector contains `local`, `stg`, and `prod`. A valid `?api=` URL, even if not a built-in option, is represented as the selected custom value on initial load. A `?match=` remains a deep-link default, with its associated API base. Ruleset selection is explicitly deferred to related issue #41; this delivery supports the current standard ruleset only.
 
 ## References and current behavior
 
@@ -37,7 +37,7 @@ The base URL selector contains `local`, `stg`, and `prod`. A valid `?api=` URL, 
 
 ## Dependencies and parallelism
 
-ai-arena's public match-list endpoint is already deployed contract input. The ai-arena companion plan `0131-ranking-completed-match-discovery` improves authenticated operator history but is independent: the visualizer must never call it. Ruleset selection is a follow-up under #41 and is not an execution dependency.
+ai-arena's public match-list endpoint is already deployed contract input. The ai-arena companion plan `0131-ranking-completed-match-discovery` improves authenticated operator history but is independent: the visualizer must never call it. Ruleset selection is related deferred work under #41 and is not an execution dependency.
 
 ## Verification
 
