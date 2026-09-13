@@ -12,7 +12,9 @@ body {
 }
 
 .shell {
-  padding: 4rem 1.5rem;
+  max-width: 48rem;
+  margin: auto;
+  padding: 2rem 1.5rem;
 }
 
 .hero {
@@ -29,3 +31,6 @@ body {
   color: #bfd4c3;
   line-height: 1.6;
 }
+
+#board canvas { max-width: 100%; height: auto !important; }
+button { margin: .25rem; padding: .6rem .9rem; font: inherit; cursor: pointer; }

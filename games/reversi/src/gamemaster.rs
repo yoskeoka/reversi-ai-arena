@@ -23,6 +23,8 @@ pub struct SnapshotState {
     pub completed: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub winner_by_forfeit: Option<PlayerColor>,
+    #[serde(default)]
+    pub public_replay_turns: Vec<crate::PublicReplayTurn>,
 }
 
 impl From<&MatchState> for SnapshotState {
@@ -34,6 +36,7 @@ impl From<&MatchState> for SnapshotState {
             consecutive_passes: value.consecutive_passes,
             completed: value.completed,
             winner_by_forfeit: value.winner_by_forfeit,
+            public_replay_turns: Vec::new(),
         }
     }
 }
@@ -59,6 +62,7 @@ pub struct ReversiGameMaster {
     pub state: MatchState,
     pub last_action_statuses: BTreeMap<String, ReversiActionStatus>,
     pub stderr_bytes: BTreeMap<String, i32>,
+    pub public_replay_turns: Vec<crate::PublicReplayTurn>,
 }
 
 impl ReversiGameMaster {
@@ -77,11 +81,16 @@ impl ReversiGameMaster {
         player_colors.insert(players[0].player_id.clone(), PlayerColor::Black);
         player_colors.insert(players[1].player_id.clone(), PlayerColor::White);
 
-        let state = resume_snapshot
+        let (state, public_replay_turns) = resume_snapshot
             .as_ref()
             .and_then(|snapshot| snapshot.game_state.clone())
-            .map(MatchState::from)
-            .unwrap_or_else(MatchState::new_standard);
+            .map(|snapshot| {
+                (
+                    MatchState::from(snapshot.clone()),
+                    snapshot.public_replay_turns,
+                )
+            })
+            .unwrap_or_else(|| (MatchState::new_standard(), Vec::new()));
         let mut per_player = BTreeMap::new();
         for player in &players {
             let color = *player_colors
@@ -132,6 +141,7 @@ impl ReversiGameMaster {
                 state,
                 last_action_statuses,
                 stderr_bytes,
+                public_replay_turns,
             },
             ReversiGameMasterInitState { per_player },
         ))
@@ -232,6 +242,12 @@ impl ReversiGameMaster {
             .ok_or_else(|| "accepted action is missing payload".to_string())?;
         if self.state.apply_valid_action(&action).is_err() {
             self.state.forfeit(current);
+        } else {
+            self.public_replay_turns.push(crate::PublicReplayTurn {
+                player_id: current_player_id,
+                color: current,
+                action,
+            });
         }
         Ok(())
     }
@@ -258,7 +274,10 @@ impl ReversiGameMaster {
             ruleset_version: Some(RULESET_VERSION.to_string()),
             turn: self.state.turn,
             status: self.status(),
-            game_state: Some(SnapshotState::from(&self.state)),
+            game_state: Some(SnapshotState {
+                public_replay_turns: self.public_replay_turns.clone(),
+                ..SnapshotState::from(&self.state)
+            }),
             per_player,
         }
     }
@@ -311,6 +330,23 @@ impl ReversiGameMaster {
                 .collect()
         };
         MatchResult { placements }
+    }
+
+    pub fn current_public_replay(&self) -> Result<gamemaster::PublicReplay, String> {
+        if !self.state.completed {
+            return Err("public replay is available only after completion".to_string());
+        }
+        Ok(gamemaster::PublicReplay {
+            format: "reversi/replay".to_string(),
+            version: "1".to_string(),
+            payload: serde_json::to_value(crate::PublicReplayPayload {
+                board_size: BOARD_SIZE as u8,
+                opening: MatchState::opening(),
+                ruleset: RULESET_VERSION.to_string(),
+                turns: self.public_replay_turns.clone(),
+            })
+            .map_err(|err| format!("encode public replay: {err}"))?,
+        })
     }
 
     pub fn status(&self) -> MatchStatus {
@@ -386,5 +422,42 @@ mod tests {
             normalized.failure_reason,
             Some(FailureReason::InvalidIllegalAction)
         );
+    }
+
+    #[test]
+    fn completed_match_exposes_versioned_public_replay() {
+        let (mut master, _) = ReversiGameMaster::initialize("m1", players(), None).expect("init");
+        master
+            .apply_decision_results(&[ReversiActionStatus {
+                player_id: "p1".to_string(),
+                action_status: ActionDecision::NoAction,
+                failure_reason: Some(FailureReason::InvalidTimeout),
+                action: None,
+            }])
+            .expect("forfeit completes match");
+        let replay = master.current_public_replay().expect("public replay");
+        assert_eq!(replay.format, "reversi/replay");
+        assert_eq!(replay.version, "1");
+        assert_eq!(replay.payload["turns"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn resume_restores_public_replay_turns() {
+        let (mut master, _) = ReversiGameMaster::initialize("m1", players(), None).expect("init");
+        master
+            .apply_decision_results(&[ReversiActionStatus {
+                player_id: "p1".to_string(),
+                action_status: ActionDecision::Accepted,
+                failure_reason: None,
+                action: Some(crate::Action {
+                    kind: crate::ActionKind::Place,
+                    position: Some(crate::Position { row: 2, col: 3 }),
+                }),
+            }])
+            .expect("apply accepted action");
+        let snapshot = master.current_snapshot();
+        let (resumed, _) =
+            ReversiGameMaster::initialize("m1", players(), Some(snapshot)).expect("resume");
+        assert_eq!(resumed.public_replay_turns.len(), 1);
     }
 }

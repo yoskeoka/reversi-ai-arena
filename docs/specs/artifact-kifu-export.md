@@ -75,6 +75,10 @@ That reusable core must stay suitable for later:
 - browser visualizer artifact loading
 - transcript-oriented verification helpers
 
+The browser viewer does not use this helper's input resolution. Its sole input
+is the versioned public replay payload plus final exported snapshot published
+by `ai-arena`; private-artifact precedence remains local-helper behavior only.
+
 ## Verification Expectations
 
 Verification must cover:

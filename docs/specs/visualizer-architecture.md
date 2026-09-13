@@ -27,13 +27,26 @@ not a program that `ai-arena` hosts or executes.
 
 ## Data Contract
 
-- The initial client reads versioned exported-state and public replay JSON from
-  `ai-arena`'s anonymous public API; checked-in equivalent fixtures support
-  offline verification.
-- The client may reuse the Reversi-owned artifact parsing and transcript core
-  introduced for kifu export rather than reimplementing runner-artifact
-  decoding from scratch.
-- Replay input must be reconstructible without private engine state.
-- Snapshot polling for an in-progress match consumes the same public API and
-  discards stale versions; it stops at terminal lifecycle. Event streaming is
-  a later phase, not a Reversi-specific bypass.
+- The client reads only the anonymous `GET /api/v1-alpha/public/matches/{id}`,
+  `/state`, and `/replay` resources. Its API base URL and match ID are URL
+  configuration, never credentials or private artifact locators.
+- Terminal replay accepts `format: "reversi/replay"` and `version: "1"` only.
+  Its Reversi-owned payload supplies `board_size`, `opening`, `ruleset`, and
+  accepted placement/pass transcript entries. The final exported state is
+  separately fetched from the public state resource and must agree with the
+  replayed board, score, turn/player state, and terminal status.
+- Unknown initial-position parameters, incompatible format/version, malformed
+  transcript, incomplete/canceled terminal state, or disagreement with the
+  final exported state is an explainable viewer error; the client never guesses
+  an opening or falls back to `record.json`, `history.json`, or filesystem data.
+- A state poller accepts only newer `(selected_run_id, state_version)` values,
+  and stops when lifecycle is terminal or `retry_after_ms` is zero. Event
+  streaming is a later phase.
+
+## Hosting and Accessibility
+
+The provider builds and hosts this static application independently from
+`ai-arena`; the platform neither serves its assets nor executes it as a plugin.
+Phaser renders the board only. Playback buttons, turn/score/result summaries,
+and errors are semantic HTML so keyboard and assistive-technology users do not
+need canvas access.

@@ -9,6 +9,23 @@ Current verification entrypoints:
 - `AI_ARENA_DIR=/path/to/ai-arena make verify-release-artifacts`
 - `make verify-workflows`
 
+## Run The Public Replay Visualizer
+
+The viewer is a separate Vite application. It starts with its built-in terminal
+fixture, so no `ai-arena` service is needed for the first local view:
+
+```sh
+cd visualizer
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:4173`.
+
+For development connections to local, staging, or production `ai-arena`, see
+[`DEVELOPMENT.md`](DEVELOPMENT.md). See
+[`visualizer/README.md`](visualizer/README.md) for visualizer-specific notes.
+
 ## Build And Validate Official Artifacts
 
 The official Reversi game master and reference AI are separate WASM/WASI

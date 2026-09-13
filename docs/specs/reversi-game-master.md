@@ -125,6 +125,8 @@ recomputing from logs alone, including:
 - current turn number
 - consecutive forced-pass count
 - last accepted or failed action status per player
+- accepted public replay turns, so a resumed completed match publishes a full
+  transcript rather than only post-resume turns
 - terminal winner or failure state when already completed
 
 The exported snapshot must preserve only public replay-safe data:
@@ -134,6 +136,20 @@ The exported snapshot must preserve only public replay-safe data:
 - current scores
 - whether the match is completed
 - last action status per player
+
+## Public Replay Contract
+
+For a completed match, the game master publishes `current_public_replay` with
+format `reversi/replay`, version `1`, and a JSON payload. The payload contains
+the fixed eight-square standard opening, `ruleset: "standard"`, and only the
+ordered accepted placements and accepted passes. It contains no private
+visible-state, runner history, stderr, or artifact locator.
+
+The consumer replays those entries from the declared opening and validates its
+terminal state against the separately published exported snapshot. An
+immediate-loss completion has an empty transcript and remains valid when the
+exported state identifies a surviving winner. A non-completed match has no
+public replay.
 
 ## Result Contract
 
