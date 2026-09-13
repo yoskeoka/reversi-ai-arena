@@ -9,6 +9,35 @@ Current verification entrypoints:
 - `AI_ARENA_DIR=/path/to/ai-arena make verify-release-artifacts`
 - `make verify-workflows`
 
+## Run The Public Replay Visualizer Locally
+
+The viewer is a separate Vite application. It starts with its built-in terminal
+fixture, so no `ai-arena` service is needed for the first local view:
+
+```sh
+cd visualizer
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:4173`.
+
+To load a real completed public match, add the anonymous API base URL and match
+ID to the browser URL:
+
+```text
+http://127.0.0.1:4173/?api=http://127.0.0.1:10000&match=<match-id>
+```
+
+For a local `ai-arena` backend, complete its one-time prerequisites and service
+bootstrap in the [ai-arena development guide](https://github.com/yoskeoka/ai-arena/blob/main/DEVELOPMENT.md),
+then run `make start-backend-local` in the `ai-arena` repository. The selected
+match must be a completed Reversi match that is discoverable through the public
+spectator API; this viewer never reads private runner artifacts or credentials.
+
+See [`visualizer/README.md`](visualizer/README.md) for the same commands and
+the public API URL shape.
+
 ## Build And Validate Official Artifacts
 
 The official Reversi game master and reference AI are separate WASM/WASI
