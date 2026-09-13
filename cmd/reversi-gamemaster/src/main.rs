@@ -4,7 +4,7 @@ use aiarena_protocol::{
     Decoder, Encoder, ErrorObject, Request, Response,
     gamemaster::{
         self, METHOD_APPLY_DECISION_RESULTS, METHOD_CURRENT_EXPORTED_SNAPSHOT,
-        METHOD_CURRENT_RESULT, METHOD_CURRENT_SNAPSHOT, METHOD_INITIALIZE_MATCH, METHOD_METADATA,
+        METHOD_CURRENT_PUBLIC_REPLAY, METHOD_CURRENT_RESULT, METHOD_CURRENT_SNAPSHOT, METHOD_INITIALIZE_MATCH, METHOD_METADATA,
         METHOD_NEXT_DECISION_STEP, METHOD_NORMALIZE_ACTION, METHOD_SHUTDOWN,
     },
 };
@@ -116,6 +116,10 @@ fn handle_request(game_master: &mut Option<ReversiGameMaster>, request: Request)
         }),
         METHOD_CURRENT_RESULT => with_master(game_master, |master| {
             success_response(request_id.as_deref(), &master.current_result())
+                .map_err(|err| err.to_string())
+        }),
+        METHOD_CURRENT_PUBLIC_REPLAY => with_master(game_master, |master| {
+            success_response(request_id.as_deref(), &master.current_public_replay()?)
                 .map_err(|err| err.to_string())
         }),
         METHOD_SHUTDOWN => {

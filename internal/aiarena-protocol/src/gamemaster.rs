@@ -13,6 +13,7 @@ pub const METHOD_APPLY_DECISION_RESULTS: &str = "apply_decision_results";
 pub const METHOD_CURRENT_SNAPSHOT: &str = "current_snapshot";
 pub const METHOD_CURRENT_EXPORTED_SNAPSHOT: &str = "current_exported_snapshot";
 pub const METHOD_CURRENT_RESULT: &str = "current_result";
+pub const METHOD_CURRENT_PUBLIC_REPLAY: &str = "current_public_replay";
 pub const METHOD_SHUTDOWN: &str = "shutdown";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -115,6 +116,15 @@ pub struct Placement {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MatchResult {
     pub placements: Vec<Placement>,
+}
+
+/// PublicReplay is a terminal, game-produced payload that the platform stores
+/// opaquely for anonymous consumers.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PublicReplay {
+    pub format: String,
+    pub version: String,
+    pub payload: Value,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

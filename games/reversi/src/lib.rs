@@ -97,6 +97,21 @@ pub struct GameSummary {
     pub winners: Vec<PlayerColor>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PublicReplayTurn {
+    pub player_id: String,
+    pub color: PlayerColor,
+    pub action: Action,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PublicReplayPayload {
+    pub board_size: u8,
+    pub opening: Vec<DiscPlacement>,
+    pub ruleset: String,
+    pub turns: Vec<PublicReplayTurn>,
+}
+
 pub type ReversiGameMasterInitState = gm::InitState<InitState>;
 pub type ReversiDecisionStep = gm::DecisionStep<VisibleState, LegalActionHint>;
 pub type ReversiActionStatus = gm::ActionStatus<Action>;
