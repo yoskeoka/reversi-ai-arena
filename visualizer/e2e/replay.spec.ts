@@ -27,7 +27,7 @@ test("discovers and replays a public completed match without private requests or
   await page.getByLabel("Completed Reversi match").selectOption("public-match");
   await expect(page).toHaveURL(/api=https%3A%2F%2Fai-arena-staging-p4ml\.onrender\.com.*match=public-match/);
   await expect(page.getByText("Completed terminal replay")).toBeVisible();
-  expect(seen).toHaveLength(4);
+  expect(seen).toHaveLength(5);
   expect(seen.every((url) => url.includes("/api/v1-alpha/public/matches") && !url.includes("operator") && !url.includes("artifact"))).toBe(true);
   await expect(page.getByText(/run/i)).not.toBeVisible();
 });

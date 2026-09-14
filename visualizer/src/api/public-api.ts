@@ -14,7 +14,7 @@ export type PublicReplayResponse = { availability: string; format?: string; vers
 export function normalizeBaseUrl(value: string): string | undefined {
   try {
     const url = new URL(value);
-    if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+    if ((url.protocol !== "http:" && url.protocol !== "https:") || url.username || url.password) return undefined;
     url.pathname = url.pathname.replace(/\/$/, ""); url.search = ""; url.hash = "";
     return url.toString().replace(/\/$/, "");
   } catch { return undefined; }
