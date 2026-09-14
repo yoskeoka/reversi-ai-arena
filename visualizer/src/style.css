@@ -32,5 +32,14 @@ body {
   line-height: 1.6;
 }
 
+.discovery {
+  display: grid;
+  gap: .5rem;
+  margin: 1.5rem 0;
+  max-width: 32rem;
+}
+
+select { padding: .6rem; font: inherit; }
+
 #board canvas { max-width: 100%; height: auto !important; }
 button { margin: .25rem; padding: .6rem .9rem; font: inherit; cursor: pointer; }

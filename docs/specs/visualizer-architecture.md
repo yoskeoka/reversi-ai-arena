@@ -27,9 +27,23 @@ not a program that `ai-arena` hosts or executes.
 
 ## Data Contract
 
-- The client reads only the anonymous `GET /api/v1-alpha/public/matches/{id}`,
-  `/state`, and `/replay` resources. Its API base URL and match ID are URL
-  configuration, never credentials or private artifact locators.
+- The client discovers replay candidates only through anonymous `GET
+  /api/v1-alpha/public/matches`, then reads its selected match through
+  `GET /api/v1-alpha/public/matches/{id}`, `/state`, and `/replay`. Every
+  request omits credentials. API bases and match IDs are URL configuration,
+  never credentials or private artifact locators.
+- Discovery presents only completed records for the supported Reversi game,
+  major version, and `standard` ruleset. `selected_run_id` is informational
+  metadata used to validate the selected public resources; it is never a
+  viewer control or query parameter.
+- The base selector offers local, staging, and production public API profiles.
+  A valid `api` query URL outside those profiles remains selected as a custom
+  base rather than being replaced. A `match` query remains a deep-link default
+  associated with its API base. With neither API nor match selection the
+  viewer renders its built-in fixture.
+- Ruleset and game-major selection are deliberately unsupported in this
+  version. The viewer validates the replay payload as `ruleset: "standard"`;
+  configurable rulesets remain deferred to `docs/issues/0004-visualizer-ruleset-selection.md`.
 - Terminal replay accepts `format: "reversi/replay"` and `version: "1"` only.
   Its Reversi-owned payload supplies `board_size`, `opening`, `ruleset`, and
   accepted placement/pass transcript entries. The final exported state is
