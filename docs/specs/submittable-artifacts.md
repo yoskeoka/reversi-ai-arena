@@ -9,10 +9,11 @@ validator and bundle runner; Reversi pins and consumes commit
 
 ## Release Assets
 
-A release version `R` publishes exactly these files:
+A public release uses the source-controlled Reversi game version `X.Y.Z` and
+the exact Git tag `vX.Y.Z`. It publishes exactly these files:
 
-- `reversi-game-R.arena.zip`
-- `reversi-rust-reference-ai-R.arena.zip`
+- `reversi-game-vX.Y.Z.arena.zip`
+- `reversi-rust-reference-ai-vX.Y.Z.arena.zip`
 - `SHA256SUMS`
 
 Each ZIP has exactly two root entries, in this order: `manifest.json` and its
@@ -23,19 +24,30 @@ SHA-256 of those exact ZIP bytes.
 ## Manifests
 
 The game manifest declares `schema_version` `arena-bundle/v1`, `artifact_kind`
-`game`, `game_id` `reversi`, `game_version` `1.0.0`, and one `standard`
-ruleset with `player_count` 2 and `max_active_bots_per_owner` 3. Its runtime is
-`wasm-wasi` and declares `reversi-gamemaster.wasm`.
+`game`, `game_id` `reversi`, and the source-controlled `game_version` `X.Y.Z`,
+plus one `standard` ruleset with `player_count` 2 and
+`max_active_bots_per_owner` 3. Its runtime is `wasm-wasi` and declares
+`reversi-gamemaster.wasm`.
 
 The AI manifest declares the same schema, game identity, and `standard`
 ruleset; it declares `artifact_kind` `ai`, `ai_id` `rust-reference`, and the
 `wasm-wasi` module `rust-reference-ai.wasm`. The technical AI identity is not
-the user-visible bot name.
+the user-visible bot name. The game-master runtime metadata reports that same
+source-controlled version.
 
 No manifest extensions are permitted. In particular, manifests do not include
 hashes, decision-mode fields, game-master protocol versions, or zero-valued
-resource limits. Release filename version identifies the build; the game
-compatibility version remains `1.0.0`.
+resource limits. A tagged release must reject a malformed tag or a tag whose
+version differs from either generated manifest before GitHub Release creation.
+Local `dev` artifacts remain available for verification but are not admissible
+tagged releases.
+
+Each admitted release version is immutable. A source change that changes the
+admitted artifact selects and commits its next semantic version before
+publication. Same-major versions remain compatible with existing same-major
+bots, but are distinct immutable game releases. The historical `v0.1.1`
+assets remain immutable and cannot be retroactively changed or used to
+duplicate the `1.0.0` game release.
 
 ## Validation and Handoff
 
@@ -44,5 +56,9 @@ validator and compares its `sha256:<hex>` result with `SHA256SUMS`. It then
 starts a standard two-player match using the game ZIP as `--game-master-bundle`
 and the AI ZIP twice as `--player-bundle`; the resulting standard artifact
 summary and exported snapshot must both report `completed`. The GitHub Release
-uploads these same bytes. Staging submits those release assets without
-repacking them.
+uploads these same bytes without rewriting their manifests. Staging submits
+those release assets without repacking them.
+
+Before `v1.1.0` is accepted, its game and AI manifests must have
+`game_version: 1.1.0`, game-master runtime metadata must have `game_version:
+1.1.0`, and its downloaded ZIP checksums must match `SHA256SUMS`.

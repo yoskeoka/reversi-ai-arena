@@ -4,12 +4,6 @@ on:
   push:
     tags:
       - "v*"
-  workflow_dispatch:
-    inputs:
-      release_version:
-        description: Release version used in asset filenames
-        required: true
-        type: string
 
 permissions:
   contents: write
@@ -25,13 +19,8 @@ jobs:
           repository: yoskeoka/ai-arena
           ref: bd2de02252e0e5925aa19402c1ee569588d05a10
           path: ai-arena
-      - id: version
-        env:
-          INPUT_VERSION: ${{ inputs.release_version }}
-          TAG_NAME: ${{ github.ref_name }}
-        run: echo "value=${INPUT_VERSION:-$TAG_NAME}" >> "$GITHUB_OUTPUT"
-      - run: AI_ARENA_DIR="$GITHUB_WORKSPACE/ai-arena" RELEASE_VERSION="${{ steps.version.outputs.value }}" make verify-release-artifacts
+      - run: AI_ARENA_DIR="$GITHUB_WORKSPACE/ai-arena" RELEASE_VERSION="$GITHUB_REF_NAME" make verify-release-artifacts
       - env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+          RELEASE_VERSION: ${{ github.ref_name }}
         run: gh release create "$RELEASE_VERSION" dist/*.arena.zip dist/SHA256SUMS --title "$RELEASE_VERSION" --generate-notes

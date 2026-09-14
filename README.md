@@ -42,8 +42,9 @@ This command requires `jq` to check the runner artifacts.
 `bd2de02252e0e5925aa19402c1ee569588d05a10`. This creates `dist/` with
 `reversi-game-dev.arena.zip`, `reversi-rust-reference-ai-dev.arena.zip`, and
 `SHA256SUMS`, validates them, and completes a two-AI match by supplying those
-exact ZIPs to the upstream bundle runner. A GitHub tag or manual release runs
-the same verification and uploads those byte-identical assets.
+exact ZIPs to the upstream bundle runner. The exact source-aligned GitHub tag
+runs the same verification and uploads those byte-identical assets; see the
+[release version policy](docs/specs/submittable-artifacts.md).
 
 ## Run A Native Development Match Through `arena-runner`
 
@@ -71,7 +72,7 @@ does not replace bundle validation or staging with the official WASM artifacts.
      '{' \
      '  "metadata": {' \
      '    "game_id": "reversi",' \
-     '    "game_version": "1.0.0",' \
+     '    "game_version": "1.1.0",' \
      '    "ruleset_version": "standard"' \
      '  },' \
      '  "runtime": {' \
@@ -99,7 +100,7 @@ does not replace bundle validation or staging with the official WASM artifacts.
      "protocol": {
        "transport": "stdio-jsonrpc-ndjson",
        "game_id": "reversi",
-       "game_version": "1.0.0",
+       "game_version": "1.1.0",
        "ruleset_version": "standard"
      },
      "runtime": {
@@ -112,6 +113,9 @@ does not replace bundle validation or staging with the official WASM artifacts.
    ```
 
    Save it at `./.tmp/rust-reference-player/reversi-rust-reference-player.arena.json`.
+
+   For official release identity, tag and bundle versioning policy, see
+   [submittable artifacts](docs/specs/submittable-artifacts.md).
 
 5. Launch a local match from the repository root:
 

@@ -17,12 +17,16 @@ It fixes:
 ## Match Metadata
 
 - `game_id`: `reversi`
-- `game_version`: `1.0.0`
+- `game_version`: `1.1.0`
 - `ruleset_version`: `standard`
 
 Phase 1 owns one stable ruleset only. Future opening-policy or runtime-policy
 variants may add new ruleset identifiers, but they must not change the core
 Reversi board rules.
+
+`game_version` is the source-controlled release identity. A public release
+uses the exact `v${game_version}` Git tag, and the same value must appear in
+game-master runtime metadata and both released bundle manifests.
 
 ## Entrypoint
 

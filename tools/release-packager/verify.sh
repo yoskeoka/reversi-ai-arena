@@ -8,6 +8,12 @@ ai_arena_dir="${AI_ARENA_DIR:-$(cd "${repo_root}/../.." && pwd)/ai-arena}"
 
 "${repo_root}/tools/release-packager/package.sh" "${release_version}" "${output_dir}"
 output_dir="$(cd "${output_dir}" && pwd)"
+game_manifest="$(unzip -p "${output_dir}/reversi-game-${release_version}.arena.zip" manifest.json)"
+ai_manifest="$(unzip -p "${output_dir}/reversi-rust-reference-ai-${release_version}.arena.zip" manifest.json)"
+test "$(jq -r '.game_version' <<<"${game_manifest}")" = "$(jq -r '.game_version' <<<"${ai_manifest}")"
+if [[ "${release_version}" != "dev" ]]; then
+    test "$(jq -r '.game_version' <<<"${game_manifest}")" = "${release_version#v}"
+fi
 repeat_dir="$(mktemp -d)"
 runner_output_dir="$(mktemp -d)"
 trap 'rm -rf "${repeat_dir}" "${runner_output_dir}"' EXIT

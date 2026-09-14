@@ -123,7 +123,7 @@ mod tests {
         let summary = read_summary(output_dir.join("reversi-first-legal/result-summary.json"));
         assert_eq!(summary.status, "completed");
         assert_eq!(summary.game_id, "reversi");
-        assert_eq!(summary.game_version, "1.0.0");
+        assert_eq!(summary.game_version, "1.1.0");
         assert_eq!(summary.ruleset_version, "standard");
     }
 
@@ -436,7 +436,7 @@ mod tests {
             "protocol": {
                 "transport": "stdio-jsonrpc-ndjson",
                 "game_id": "reversi",
-                "game_version": "1.0.0",
+                "game_version": "1.1.0",
                 "ruleset_version": "standard"
             },
             "runtime": {
@@ -466,7 +466,7 @@ mod tests {
         let manifest = serde_json::json!({
             "metadata": {
                 "game_id": "reversi",
-                "game_version": "1.0.0",
+                "game_version": "1.1.0",
                 "ruleset_version": "standard"
             },
             "runtime": {
@@ -491,7 +491,7 @@ mod tests {
             "protocol": {
                 "transport": "stdio-jsonrpc-ndjson",
                 "game_id": "reversi",
-                "game_version": "1.0.0",
+                "game_version": "1.1.0",
                 "ruleset_version": "standard"
             },
             "runtime": {
