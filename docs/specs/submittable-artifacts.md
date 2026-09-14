@@ -59,6 +59,6 @@ summary and exported snapshot must both report `completed`. The GitHub Release
 uploads these same bytes without rewriting their manifests. Staging submits
 those release assets without repacking them.
 
-The accepted `v1.1.0` release has game and AI manifests with
-`game_version: 1.1.0`, game-master runtime metadata with `game_version:
-1.1.0`, and matching downloaded ZIP checksums recorded in `SHA256SUMS`.
+Before `v1.1.0` is accepted, its game and AI manifests must have
+`game_version: 1.1.0`, game-master runtime metadata must have `game_version:
+1.1.0`, and its downloaded ZIP checksums must match `SHA256SUMS`.

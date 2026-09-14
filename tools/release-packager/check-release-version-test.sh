@@ -25,6 +25,12 @@ if "${repo_root}/tools/release-packager/check-release-version.sh" \
     exit 1
 fi
 
+if "${repo_root}/tools/release-packager/check-release-version.sh" \
+    v01.1.0 "${fixture_dir}/game.json" "${fixture_dir}/ai.json"; then
+    echo "expected leading-zero semantic version to fail" >&2
+    exit 1
+fi
+
 printf '%s\n' '{"game_version":"1.2.0"}' > "${fixture_dir}/ai.json"
 if "${repo_root}/tools/release-packager/check-release-version.sh" \
     dev "${fixture_dir}/game.json" "${fixture_dir}/ai.json"; then

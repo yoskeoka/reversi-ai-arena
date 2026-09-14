@@ -21,7 +21,7 @@ if [[ "${release_version}" == "dev" ]]; then
     exit 0
 fi
 
-if [[ ! "${release_version}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+if [[ ! "${release_version}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
     echo "release version must be dev or a v-prefixed semantic version" >&2
     exit 2
 fi
