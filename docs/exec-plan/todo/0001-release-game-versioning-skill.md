@@ -1,20 +1,19 @@
-# Reversi game-version release skill
+# Reversi release skill with version match
 
 > **Execution**: Use `/execute-task` to implement this plan. After implementation is complete, use `/review-task` to prepare and create the PR.
 
 ## Objective and completion boundary
 
-Make every admitted Reversi game release use one source-controlled semantic
-version across its Git tag, release asset filenames, game and AI bundle
-manifests, and runtime metadata. Add a repository-local skill that performs
-the post-merge release operation safely. Validate that skill by releasing
-`v1.1.0` from the merged implementation commit and confirming the published
-artifacts.
+Use one source-controlled semantic version for each admitted Reversi game
+release. It must match the Git tag, asset names, bundle manifests, and runtime
+metadata. Add a repository-local skill for the safe post-merge release step.
 
-This plan ends after the GitHub `v1.1.0` release has passed its artifact
-workflow and the skill has verified its assets and manifests. Registering the
-new game artifact in ai-arena, activating a staging scope, and creating a
-staging match are out of scope.
+Validate the skill by releasing `v1.1.0` from the merged commit. Confirm the
+published assets. The plan ends after the GitHub release workflow and asset
+checks pass.
+
+ai-arena registration, staging activation, and staging matches are out of
+scope.
 
 The already-published `v0.1.1` assets remain immutable historical assets. Do
 not overwrite their tag, release, manifest, or ai-arena registration.
@@ -23,19 +22,17 @@ Addresses: N/A - no local issue exists.
 
 ## Chosen release identity
 
-Use source-controlled `reversi_game::GAME_VERSION` as the authoritative game
-release version. A registered release's Git tag must be exactly
-`v${GAME_VERSION}`; its game and AI bundle manifests and game-master runtime
-metadata must report `${GAME_VERSION}`. A source change that changes an
-admitted game artifact must select and commit the next appropriate semantic
-version before release. The `current_public_replay` capability is a
-backwards-compatible addition, so this execution uses `1.1.0` and tag
-`v1.1.0`.
+- `reversi_game::GAME_VERSION` is the source of truth.
+- A registered release uses tag `v${GAME_VERSION}`.
+- Game and AI manifests, plus game-master runtime metadata, report
+  `${GAME_VERSION}`.
+- A changed admitted artifact selects and commits its next semantic version
+  before release.
+- `current_public_replay` is a backward-compatible addition. This plan uses
+  version `1.1.0` and tag `v1.1.0`.
 
-Do not derive runtime metadata by rewriting a packaged manifest from the tag:
-that would let a manifest and the compiled game-master metadata diverge. The
-release workflow validates the tag-to-source relationship and only packages
-the already-versioned source.
+The workflow packages already-versioned source. It must not rewrite a manifest
+from the tag, because that could diverge from compiled runtime metadata.
 
 ## Current evidence
 
@@ -120,15 +117,13 @@ the already-versioned source.
    a fixed source and tag. Cover success, mismatch rejection, and `dev`
    behavior with focused automated tests or shell-level checks.
 
-4. Create `.claude/skills/release-reversi-game/SKILL.md` using the verified
-   package/workflow commands. Keep it specific to official Reversi game
-   releases: require a merged version-bump PR, a clean current `main`, exact
-   tag/source equality, no pre-existing tag or release, and explicit user
-   authorization before creating the tag. It must poll the release workflow,
-   retrieve release assets, verify `SHA256SUMS` and both embedded manifests,
-   and report that ai-arena registration is a separate later action. Do not
-   encode credentials or automatically register a game/bot or activate a
-   scope.
+4. Create `.claude/skills/release-reversi-game/SKILL.md` from the verified
+   package and workflow commands. Limit it to official Reversi game releases.
+   Require a merged version-bump PR, clean current `main`, exact tag/source
+   equality, no existing tag or release, and user authorization before tagging.
+   It polls the workflow and verifies `SHA256SUMS` plus both embedded manifests.
+   It reports ai-arena registration as a later action. It never stores
+   credentials or registers a game/bot or activates a scope.
 
 5. Run the applicable non-AI checks, open and complete the implementation PR.
    After merge, invoke the new skill against the merged `main` to create only
@@ -138,11 +133,10 @@ the already-versioned source.
 
 ## Dependencies and sequencing
 
-Tasks 1 and 2 establish the contract and source identity before any packaging
-or workflow changes. Task 3 supplies deterministic guards used by task 4.
-Task 4 can be drafted in parallel with task 3 but must be finalized from the
-implemented commands. Task 5 is strictly post-merge because a release tag must
-point at the reviewed `main` commit, not an implementation worktree branch.
+- Tasks 1 and 2 establish the contract and source identity first.
+- Task 3 supplies the guards that task 4 uses.
+- Task 4 may be drafted with task 3. Finish it from the implemented commands.
+- Task 5 runs after merge. Its tag targets the reviewed `main` commit.
 
 ## Verification
 
