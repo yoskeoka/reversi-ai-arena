@@ -71,7 +71,7 @@ does not replace bundle validation or staging with the official WASM artifacts.
      '{' \
      '  "metadata": {' \
      '    "game_id": "reversi",' \
-     '    "game_version": "1.0.0",' \
+     '    "game_version": "1.1.0",' \
      '    "ruleset_version": "standard"' \
      '  },' \
      '  "runtime": {' \
@@ -99,7 +99,7 @@ does not replace bundle validation or staging with the official WASM artifacts.
      "protocol": {
        "transport": "stdio-jsonrpc-ndjson",
        "game_id": "reversi",
-       "game_version": "1.0.0",
+       "game_version": "1.1.0",
        "ruleset_version": "standard"
      },
      "runtime": {
@@ -112,6 +112,9 @@ does not replace bundle validation or staging with the official WASM artifacts.
    ```
 
    Save it at `./.tmp/rust-reference-player/reversi-rust-reference-player.arena.json`.
+
+   For official release identity, tag and bundle versioning policy, see
+   [submittable artifacts](docs/specs/submittable-artifacts.md).
 
 5. Launch a local match from the repository root:
 

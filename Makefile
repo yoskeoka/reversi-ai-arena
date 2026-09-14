@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: rust-fmt rust-clippy rust-test wasm-check runner-e2e verify-rust build-release-artifacts verify-release-artifacts verify-workflows
+.PHONY: rust-fmt rust-clippy rust-test wasm-check runner-e2e verify-rust build-release-artifacts verify-release-artifacts verify-release-version verify-workflows
 
 rust-fmt:
 	./tools/rust-ci.sh fmt
@@ -25,6 +25,9 @@ build-release-artifacts:
 
 verify-release-artifacts:
 	AI_ARENA_DIR="$${AI_ARENA_DIR:?set AI_ARENA_DIR to the pinned ai-arena checkout}" ./tools/release-packager/verify.sh "$${RELEASE_VERSION:-dev}" "$${RELEASE_OUTPUT_DIR:-dist}"
+
+verify-release-version:
+	./tools/release-packager/check-release-version-test.sh
 
 verify-workflows:
 	./tools/workflow-lint.sh --mode=ci

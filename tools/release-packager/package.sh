@@ -21,12 +21,12 @@ cargo build --release --target wasm32-wasip1 -p reversi-rust-reference-player --
 
 package_bundle() {
     local artifact_name="$1"
-    local manifest_kind="$2"
+    local manifest_source="$2"
     local module_source="$3"
     local module_name="$4"
     local bundle_dir="${stage}/${artifact_name}"
     mkdir -p "${bundle_dir}"
-    cargo run --quiet -p reversi-release-packager -- "${manifest_kind}" > "${bundle_dir}/manifest.json"
+    cp "${manifest_source}" "${bundle_dir}/manifest.json"
     cp "${module_source}" "${bundle_dir}/${module_name}"
     touch -t 198001010000 "${bundle_dir}/manifest.json" "${bundle_dir}/${module_name}"
     (
@@ -35,14 +35,21 @@ package_bundle() {
     )
 }
 
+game_manifest="${stage}/game-manifest.json"
+ai_manifest="${stage}/ai-manifest.json"
+cargo run --quiet -p reversi-release-packager -- game-manifest > "${game_manifest}"
+cargo run --quiet -p reversi-release-packager -- ai-manifest > "${ai_manifest}"
+"${repo_root}/tools/release-packager/check-release-version.sh" \
+    "${release_version}" "${game_manifest}" "${ai_manifest}"
+
 package_bundle \
     "reversi-game-${release_version}.arena.zip" \
-    game-manifest \
+    "${game_manifest}" \
     "${repo_root}/target/wasm32-wasip1/release/reversi-gamemaster.wasm" \
     reversi-gamemaster.wasm
 package_bundle \
     "reversi-rust-reference-ai-${release_version}.arena.zip" \
-    ai-manifest \
+    "${ai_manifest}" \
     "${repo_root}/target/wasm32-wasip1/release/reversi-rust-reference-player.wasm" \
     rust-reference-ai.wasm
 

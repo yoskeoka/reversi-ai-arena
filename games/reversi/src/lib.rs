@@ -8,7 +8,7 @@ use aiarena_protocol::{GameMetadata, gamemaster as gm, player};
 use serde::{Deserialize, Serialize};
 
 pub const GAME_ID: &str = "reversi";
-pub const GAME_VERSION: &str = "1.0.0";
+pub const GAME_VERSION: &str = "1.1.0";
 pub const RULESET_VERSION: &str = "standard";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
