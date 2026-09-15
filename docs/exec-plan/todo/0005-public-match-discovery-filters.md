@@ -11,7 +11,7 @@ The visualizer exposes an optional ruleset filter through a URL parameter and an
 
 ## References and current behavior
 
-- `visualizer/src/api/public-api.ts:4-35` models an items-only public list and calls `/api/v1-alpha/public/matches` without query parameters. The companion API response will make `page`, `limit`, `total`, and `items` sibling top-level keys; `total` is the scope-filtered count before page slicing.
+- `visualizer/src/api/public-api.ts:4-35` models an items-only public list and calls `/api/v1-alpha/public/matches` without query parameters. The companion API response will make `pagination` and `items` sibling top-level keys; `pagination` contains `page`, `limit`, scope-filtered pre-slice `total`, and `total_pages` (`ceil(total / limit)`, or zero for an empty result).
 - `visualizer/src/api/public-api.ts:19-20,58-64` locally filters only `reversi` major 1 and hard-coded `standard`, then independently sorts completed records. A global first page dominated by another game can therefore appear empty.
 - `visualizer/src/main.ts:15-26,28-42` reads `api` / `match`, renders semantic selectors, and keeps deep links with `history.replaceState`.
 - `docs/specs/visualizer-architecture.md:22-40` defines public-only discovery, completion metadata requirements, fixed `standard` ruleset, and client-side ordering.
