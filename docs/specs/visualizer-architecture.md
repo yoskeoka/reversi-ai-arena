@@ -36,21 +36,27 @@ not a program that `ai-arena` hosts or executes.
   major version, and `standard` ruleset. `selected_run_id` is informational
   metadata used to validate the selected public resources; it is never a
   viewer control or query parameter.
-- A supported completed Reversi record has an immutable RFC 3339 UTC
-  `completed_at` timestamp and exactly two complete public `participants`
-  entries. The public spectator contract preserves submitted game-player
-  order: entry zero is Black and entry one is White for standard Reversi. Each
-  entry has a non-empty `display_name` and `ai_submission_id`. Missing,
-  malformed, or differently shaped metadata makes a record unsupported; a
-  selected deep link reports that error rather than inventing player colours,
-  names, or timestamps.
-- Discovery orders candidates by newest `completed_at` first, with the full
-  match ID as a deterministic tie-breaker. The selector keeps the full ID as
-  its value and deep-link parameter. A `match-` prefix followed by a canonical
-  UUID displays as `match-` plus its first eight hexadecimal characters; other
-  IDs remain complete. Revisions use the same UUID-only shortening rule. The
-  replay summary identifies Black and White by colour, public display name,
-  revision, and score.
+- A supported completed Reversi record has an immutable, calendar-valid
+  `completed_at` timestamp in the platform's RFC 3339 UTC form and exactly two
+  complete public `participants` entries. This form uses uppercase `T` and
+  `Z`, and ordinary seconds from `00` through `59`; leap-second (`:60`)
+  timestamps are unsupported because the public API's timestamp source does
+  not generate them. The public spectator contract preserves submitted
+  game-player order: entry zero is Black and entry one is White for standard
+  Reversi. Each entry has a non-empty `display_name` and `ai_submission_id`.
+  Detail and state resources must contain equal completion timestamps and
+  participant field values in that sequence; JSON object-property order does
+  not affect that comparison. Missing, malformed, or differently shaped
+  metadata makes a record unsupported; a selected deep link reports that error
+  rather than inventing player colours, names, or timestamps.
+- Discovery orders candidates by newest `completed_at` first, comparing the
+  complete RFC 3339 text (including fractional seconds) after their shared UTC
+  second, with the full match ID as a deterministic tie-breaker. The selector
+  keeps the full ID as its value and deep-link parameter. A `match-` prefix
+  followed by a canonical UUID displays as `match-` plus its first eight
+  hexadecimal characters; other IDs remain complete. Revisions use the same
+  UUID-only shortening rule. The replay summary identifies Black and White by
+  colour, public display name, revision, and score.
 - The base selector offers local, staging, and production public API profiles.
   A valid `api` query URL outside those profiles remains selected as a custom
   base rather than being replaced. A `match` query remains a deep-link default

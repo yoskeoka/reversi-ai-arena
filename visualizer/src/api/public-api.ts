@@ -24,7 +24,10 @@ export function normalizeBaseUrl(value: string): string | undefined {
   } catch { return undefined; }
 }
 
-export function isSupportedMatch(value: unknown): value is PublicMatch { const match = value as Partial<PublicMatch>; return typeof match === "object" && match !== null && typeof match.match_id === "string" && typeof match.selected_run_id === "string" && match.lifecycle_state === "completed" && match.game?.game_id === "reversi" && typeof match.game.game_version === "string" && /^1(?:\.|$)/.test(match.game.game_version) && match.game.ruleset_version === "standard" && hasCompletedReversiMetadata(match as Omit<PublicMatch, "game">); }
+export function isSupportedMatch(value: unknown): value is PublicMatch {
+  if (!isRecord(value) || !isRecord(value.game)) return false;
+  return typeof value.match_id === "string" && typeof value.selected_run_id === "string" && value.lifecycle_state === "completed" && value.game.game_id === "reversi" && typeof value.game.game_version === "string" && /^1(?:\.|$)/.test(value.game.game_version) && value.game.ruleset_version === "standard" && hasCompletedReversiMetadata(value);
+}
 export function shortMatchId(matchID: string): string { const uuid = matchID.slice("match-".length); return matchID.startsWith("match-") && canonicalUUID.test(uuid) ? `match-${uuid.slice(0, 8)}` : matchID; }
 export function shortRevision(revision: string): string { return canonicalUUID.test(revision) ? revision.slice(0, 8) : revision; }
 export function matchOptionLabel(match: PublicMatch): string { return `${shortMatchId(match.match_id)} — ${match.completed_at!}`; }
@@ -33,7 +36,7 @@ export async function listCompletedMatches(baseUrl: string, fetcher = fetch): Pr
   const base = requireBaseUrl(baseUrl);
   const response = await json<PublicMatchListResponse>(`${base}/api/v1-alpha/public/matches`, fetcher);
   if (!Array.isArray(response.items)) throw new Error("public match list is malformed");
-  return response.items.filter(isSupportedMatch).sort((left, right) => Date.parse(right.completed_at!) - Date.parse(left.completed_at!) || left.match_id.localeCompare(right.match_id));
+  return response.items.filter(isSupportedMatch).sort(compareCompletedMatches);
 }
 
 export async function loadReplay(baseUrl: string, matchId: string, fetcher = fetch): Promise<LoadedReplay> {
@@ -51,7 +54,24 @@ export class StatePoller {
 }
 function requireBaseUrl(value: string): string { const normalized = normalizeBaseUrl(value); if (!normalized) throw new Error("a valid public API base URL is required"); return normalized; }
 async function json<T>(url: string, fetcher: typeof fetch): Promise<T> { const response = await fetcher(url, { credentials: "omit" }); if (!response.ok) throw new Error(`public API request failed (${response.status})`); return response.json() as Promise<T>; }
-function hasCompletedReversiMetadata(match: Omit<PublicMatch, "game">): boolean { return isUTCDate(match.completed_at) && Array.isArray(match.participants) && match.participants.length === 2 && match.participants.every(isPublicParticipant); }
-function isUTCDate(value: unknown): value is string { if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value)) return false; const date = new Date(value); return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 19) === value.slice(0, 19); }
+function hasCompletedReversiMetadata(match: unknown): match is Omit<PublicMatch, "game"> { return isRecord(match) && isUTCDate(match.completed_at) && Array.isArray(match.participants) && match.participants.length === 2 && match.participants.every(isPublicParticipant); }
+function isUTCDate(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z$/.exec(value);
+  if (!parts) return false;
+  const [, year, month, day, hour, minute, second] = parts.map(Number);
+  return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth(year, month) && hour <= 23 && minute <= 59 && second <= 59;
+}
 function isPublicParticipant(value: unknown): value is PublicParticipant { return typeof value === "object" && value !== null && ["player_id", "display_name", "ai_submission_id"].every((key) => typeof (value as Record<string, unknown>)[key] === "string" && Boolean((value as Record<string, string>)[key].trim())); }
 function sameMetadata(match: PublicMatch, state: PublicStateResponse): boolean { return match.completed_at === state.completed_at && match.participants!.every((participant, index) => participant.player_id === state.participants?.[index]?.player_id && participant.display_name === state.participants?.[index]?.display_name && participant.ai_submission_id === state.participants?.[index]?.ai_submission_id); }
+function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
+function daysInMonth(year: number, month: number): number { return month === 2 ? (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 29 : 28) : [4, 6, 9, 11].includes(month) ? 30 : 31; }
+function compareCompletedMatches(left: PublicMatch, right: PublicMatch): number {
+  const [leftSecond, leftFraction = ""] = left.completed_at!.slice(0, -1).split(".");
+  const [rightSecond, rightFraction = ""] = right.completed_at!.slice(0, -1).split(".");
+  const secondOrder = rightSecond.localeCompare(leftSecond);
+  if (secondOrder) return secondOrder;
+  const width = Math.max(leftFraction.length, rightFraction.length);
+  const fractionOrder = rightFraction.padEnd(width, "0").localeCompare(leftFraction.padEnd(width, "0"));
+  return fractionOrder || left.match_id.localeCompare(right.match_id);
+}
