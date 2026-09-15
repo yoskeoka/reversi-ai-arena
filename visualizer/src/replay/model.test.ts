@@ -10,9 +10,11 @@ describe("public Reversi replay", () => {
     opening.forEach(({ position, disc }) => { initial[position.row][position.col] = disc; });
     const board = apply(initial, "black", { kind: "place", position: { row: 2, col: 3 } });
     const model = buildReplay({ board_size: 8, opening, ruleset: "standard", turns: [{ player_id: "p1", color: "black", action: { kind: "place", position: { row: 2, col: 3 } } }] }, terminal(board));
-    expect(model.frames).toHaveLength(2);
+    expect(model.frames).toHaveLength(3);
     expect(model.frames[0].board[2][3]).toBe("empty");
     expect(model.final.scores).toEqual({ black: 4, white: 1 });
+    expect(model.frames.at(-1)).toBe(model.final);
+    expect(model.final.currentPlayer).toBeNull();
     expect(Object.isFrozen(model.frames[0].board)).toBe(true);
     expect(Object.isFrozen(model.frames[0].board[0])).toBe(true);
   });

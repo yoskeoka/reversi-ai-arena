@@ -32,6 +32,8 @@ body {
   line-height: 1.6;
 }
 
+.summary p { margin: .35rem 0; }
+
 .discovery {
   display: grid;
   gap: .5rem;
