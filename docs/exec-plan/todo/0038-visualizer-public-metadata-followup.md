@@ -5,7 +5,7 @@ Addresses: https://github.com/yoskeoka/ai-arena/pull/366
 
 ## Objective and completion boundary
 
-After ai-arena #366 has merged and its compatible public participant metadata is deployed, make the Reversi visualizer consume that metadata defensively. The browser accepts only valid completed standard-Reversi records, orders them by actual completion instants, compares equivalent metadata structurally, and retains full match IDs in deep links.
+After ai-arena #366 has merged and the separate runtime metadata implementation has deployed to the selected API base, make the Reversi visualizer consume that metadata defensively. #366 supplies the participant-order contract only. The browser accepts only valid completed standard-Reversi records, orders them by actual completion instants, compares equivalent metadata structurally, and retains full match IDs in deep links.
 
 This plan consumes ai-arena's generic public metadata contract. It does not add Reversi rules, colour assignment, schema fields, or routes to ai-arena.
 
@@ -26,14 +26,14 @@ This plan consumes ai-arena's generic public metadata contract. It does not add 
 ## Black-box specification changes
 
 1. Invalid RFC 3339 UTC calendar timestamps and malformed list items are unsupported without preventing valid matches from being discovered.
-2. Completion ordering uses the timestamp instant, then full match ID; fractional precision cannot change chronological order.
+2. Completion ordering compares the complete RFC 3339 fractional-second text after the shared UTC second, then full match ID; it does not reduce precision to JavaScript milliseconds.
 3. Detail and state metadata must have equal values, independent of JSON property order. Their participant sequence remains Black then White under the deployed ai-arena contract.
 
 ## Work and verification
 
 1. Update the architecture specification before TypeScript.
 2. Implement the bounded decoder and comparison changes without private fallback paths.
-3. Add unit and Playwright regressions, then run `npm run typecheck`, `npm run test`, `npm run build`, `npm run test:e2e`, and workflow lint.
+3. From `visualizer/`, run `npm run typecheck`, `npm run test`, `npm run build`, and `npm run test:e2e`. From the repository root, run `make verify-workflows`.
 
 ## Non-goals
 
