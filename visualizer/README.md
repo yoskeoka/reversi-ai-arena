@@ -23,6 +23,11 @@ match. The profiles are `http://127.0.0.1:10000`,
 `https://ai-arena-service.onrender.com` respectively. The viewer only sends
 credential-free public API requests.
 
+Each completed-match option shows its compact identifier and UTC completion
+time. Replay summaries show Black and White public display names, immutable
+submission revisions, and scores. This requires the compatible public
+participant-order contract tracked by [ai-arena#365](https://github.com/yoskeoka/ai-arena/issues/365).
+
 A replay can be shared as a deep link:
 
 ```text

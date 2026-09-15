@@ -6,10 +6,14 @@ export const baseProfiles = [
   { id: "prod", label: "Production", baseUrl: "https://ai-arena-service.onrender.com" },
 ] as const;
 
-export type PublicMatch = { match_id: string; selected_run_id: string; lifecycle_state: string; game: { game_id: string; game_version: string; ruleset_version: string } };
+export type PublicParticipant = { player_id: string; display_name: string; ai_submission_id: string };
+export type PublicMatch = { match_id: string; selected_run_id: string; lifecycle_state: string; game: { game_id: string; game_version: string; ruleset_version: string }; participants?: PublicParticipant[]; completed_at?: string };
 export type PublicMatchListResponse = { items: PublicMatch[] };
 export type PublicStateResponse = Omit<PublicMatch, "game"> & { availability: string; state_version?: number; public_state?: unknown; retry_after_ms: number };
 export type PublicReplayResponse = { availability: string; format?: string; version?: string; payload?: unknown };
+export type LoadedReplay = { model: ReplayModel; match: PublicMatch };
+
+const canonicalUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function normalizeBaseUrl(value: string): string | undefined {
   try {
@@ -20,22 +24,24 @@ export function normalizeBaseUrl(value: string): string | undefined {
   } catch { return undefined; }
 }
 
-export function isSupportedMatch(match: PublicMatch): boolean {
-  return match.lifecycle_state === "completed" && match.game?.game_id === "reversi" && /^1(?:\.|$)/.test(match.game.game_version) && match.game.ruleset_version === "standard";
-}
+export function isSupportedMatch(match: PublicMatch): boolean { return match.lifecycle_state === "completed" && match.game?.game_id === "reversi" && /^1(?:\.|$)/.test(match.game.game_version) && match.game.ruleset_version === "standard" && hasCompletedReversiMetadata(match); }
+export function shortMatchId(matchID: string): string { const uuid = matchID.slice("match-".length); return matchID.startsWith("match-") && canonicalUUID.test(uuid) ? `match-${uuid.slice(0, 8)}` : matchID; }
+export function shortRevision(revision: string): string { return canonicalUUID.test(revision) ? revision.slice(0, 8) : revision; }
+export function matchOptionLabel(match: PublicMatch): string { return `${shortMatchId(match.match_id)} — ${match.completed_at!}`; }
 
 export async function listCompletedMatches(baseUrl: string, fetcher = fetch): Promise<PublicMatch[]> {
   const base = requireBaseUrl(baseUrl);
   const response = await json<PublicMatchListResponse>(`${base}/api/v1-alpha/public/matches`, fetcher);
-  return response.items.filter(isSupportedMatch).sort((left, right) => left.match_id.localeCompare(right.match_id));
+  if (!Array.isArray(response.items)) throw new Error("public match list is malformed");
+  return response.items.filter(isSupportedMatch).sort((left, right) => right.completed_at!.localeCompare(left.completed_at!) || left.match_id.localeCompare(right.match_id));
 }
 
-export async function loadReplay(baseUrl: string, matchId: string, fetcher = fetch): Promise<ReplayModel> {
+export async function loadReplay(baseUrl: string, matchId: string, fetcher = fetch): Promise<LoadedReplay> {
   const base = requireBaseUrl(baseUrl);
   const path = `${base}/api/v1-alpha/public/matches/${encodeURIComponent(matchId)}`;
   const [match, state, replay] = await Promise.all([json<PublicMatch>(path, fetcher), json<PublicStateResponse>(`${path}/state`, fetcher), json<PublicReplayResponse>(`${path}/replay`, fetcher)]);
-  if (!isSupportedMatch(match) || state.selected_run_id !== match.selected_run_id || state.lifecycle_state !== match.lifecycle_state || state.availability !== "available" || replay.availability !== "available" || replay.format !== "reversi/replay" || replay.version !== "1") throw new Error("public replay is unavailable for this match");
-  return buildReplay(replay.payload, { status: match.lifecycle_state, public_state: state.public_state });
+  if (!isSupportedMatch(match) || !hasCompletedReversiMetadata(state) || state.selected_run_id !== match.selected_run_id || state.lifecycle_state !== match.lifecycle_state || !sameMetadata(match, state) || state.availability !== "available" || replay.availability !== "available" || replay.format !== "reversi/replay" || replay.version !== "1") throw new Error("public replay is unavailable for this match");
+  return { match, model: buildReplay(replay.payload, { status: match.lifecycle_state, public_state: state.public_state }) };
 }
 
 export class StatePoller {
@@ -45,3 +51,7 @@ export class StatePoller {
 }
 function requireBaseUrl(value: string): string { const normalized = normalizeBaseUrl(value); if (!normalized) throw new Error("a valid public API base URL is required"); return normalized; }
 async function json<T>(url: string, fetcher: typeof fetch): Promise<T> { const response = await fetcher(url, { credentials: "omit" }); if (!response.ok) throw new Error(`public API request failed (${response.status})`); return response.json() as Promise<T>; }
+function hasCompletedReversiMetadata(match: Omit<PublicMatch, "game">): boolean { return isUTCDate(match.completed_at) && Array.isArray(match.participants) && match.participants.length === 2 && match.participants.every(isPublicParticipant); }
+function isUTCDate(value: unknown): value is string { return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value) && !Number.isNaN(Date.parse(value)); }
+function isPublicParticipant(value: unknown): value is PublicParticipant { return typeof value === "object" && value !== null && ["player_id", "display_name", "ai_submission_id"].every((key) => typeof (value as Record<string, unknown>)[key] === "string" && Boolean((value as Record<string, string>)[key].trim())); }
+function sameMetadata(match: PublicMatch, state: PublicStateResponse): boolean { return match.completed_at === state.completed_at && JSON.stringify(match.participants) === JSON.stringify(state.participants); }

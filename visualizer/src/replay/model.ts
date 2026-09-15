@@ -56,7 +56,8 @@ export function buildReplay(payloadValue: unknown, exportedValue: unknown): Repl
   if (!sameBoard(final.board, publicState.board) || final.scores.black !== publicState.scores.black || final.scores.white !== publicState.scores.white || publicState.current_player !== null) {
     throw new Error("public replay conflicts with final exported state");
   }
-  return Object.freeze({ frames: Object.freeze(frames.map(freezeFrame)), turns: Object.freeze(payload.turns.map(freezeTurn)), final: freezeFrame(final) });
+  const selectable = Object.freeze([...frames.map(freezeFrame), freezeFrame(final)]);
+  return Object.freeze({ frames: selectable, turns: Object.freeze(payload.turns.map(freezeTurn)), final: selectable.at(-1)! });
 }
 
 export function apply(board: Disc[][], color: Color, action: Action): Disc[][] {

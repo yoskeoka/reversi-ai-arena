@@ -36,3 +36,7 @@ http://127.0.0.1:4173/?api=https://ai-arena-staging-p4ml.onrender.com&match=<mat
 
 The visualizer uses only the anonymous public spectator API. It never reads
 private runner artifacts or sends credentials.
+
+Completed Reversi discovery requires the public completion time plus ordered
+participant metadata: the first entry is Black and the second is White. Live
+API compatibility is tracked by [ai-arena#365](https://github.com/yoskeoka/ai-arena/issues/365).
