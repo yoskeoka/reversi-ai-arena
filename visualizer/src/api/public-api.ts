@@ -24,7 +24,7 @@ export function normalizeBaseUrl(value: string): string | undefined {
   } catch { return undefined; }
 }
 
-export function isSupportedMatch(match: PublicMatch): boolean { return match.lifecycle_state === "completed" && match.game?.game_id === "reversi" && /^1(?:\.|$)/.test(match.game.game_version) && match.game.ruleset_version === "standard" && hasCompletedReversiMetadata(match); }
+export function isSupportedMatch(value: unknown): value is PublicMatch { const match = value as Partial<PublicMatch>; return typeof match === "object" && match !== null && typeof match.match_id === "string" && typeof match.selected_run_id === "string" && match.lifecycle_state === "completed" && match.game?.game_id === "reversi" && typeof match.game.game_version === "string" && /^1(?:\.|$)/.test(match.game.game_version) && match.game.ruleset_version === "standard" && hasCompletedReversiMetadata(match as Omit<PublicMatch, "game">); }
 export function shortMatchId(matchID: string): string { const uuid = matchID.slice("match-".length); return matchID.startsWith("match-") && canonicalUUID.test(uuid) ? `match-${uuid.slice(0, 8)}` : matchID; }
 export function shortRevision(revision: string): string { return canonicalUUID.test(revision) ? revision.slice(0, 8) : revision; }
 export function matchOptionLabel(match: PublicMatch): string { return `${shortMatchId(match.match_id)} — ${match.completed_at!}`; }
@@ -33,7 +33,7 @@ export async function listCompletedMatches(baseUrl: string, fetcher = fetch): Pr
   const base = requireBaseUrl(baseUrl);
   const response = await json<PublicMatchListResponse>(`${base}/api/v1-alpha/public/matches`, fetcher);
   if (!Array.isArray(response.items)) throw new Error("public match list is malformed");
-  return response.items.filter(isSupportedMatch).sort((left, right) => right.completed_at!.localeCompare(left.completed_at!) || left.match_id.localeCompare(right.match_id));
+  return response.items.filter(isSupportedMatch).sort((left, right) => Date.parse(right.completed_at!) - Date.parse(left.completed_at!) || left.match_id.localeCompare(right.match_id));
 }
 
 export async function loadReplay(baseUrl: string, matchId: string, fetcher = fetch): Promise<LoadedReplay> {
@@ -52,6 +52,6 @@ export class StatePoller {
 function requireBaseUrl(value: string): string { const normalized = normalizeBaseUrl(value); if (!normalized) throw new Error("a valid public API base URL is required"); return normalized; }
 async function json<T>(url: string, fetcher: typeof fetch): Promise<T> { const response = await fetcher(url, { credentials: "omit" }); if (!response.ok) throw new Error(`public API request failed (${response.status})`); return response.json() as Promise<T>; }
 function hasCompletedReversiMetadata(match: Omit<PublicMatch, "game">): boolean { return isUTCDate(match.completed_at) && Array.isArray(match.participants) && match.participants.length === 2 && match.participants.every(isPublicParticipant); }
-function isUTCDate(value: unknown): value is string { return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value) && !Number.isNaN(Date.parse(value)); }
+function isUTCDate(value: unknown): value is string { if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value)) return false; const date = new Date(value); return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 19) === value.slice(0, 19); }
 function isPublicParticipant(value: unknown): value is PublicParticipant { return typeof value === "object" && value !== null && ["player_id", "display_name", "ai_submission_id"].every((key) => typeof (value as Record<string, unknown>)[key] === "string" && Boolean((value as Record<string, string>)[key].trim())); }
-function sameMetadata(match: PublicMatch, state: PublicStateResponse): boolean { return match.completed_at === state.completed_at && JSON.stringify(match.participants) === JSON.stringify(state.participants); }
+function sameMetadata(match: PublicMatch, state: PublicStateResponse): boolean { return match.completed_at === state.completed_at && match.participants!.every((participant, index) => participant.player_id === state.participants?.[index]?.player_id && participant.display_name === state.participants?.[index]?.display_name && participant.ai_submission_id === state.participants?.[index]?.ai_submission_id); }

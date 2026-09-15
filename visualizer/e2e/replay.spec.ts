@@ -29,7 +29,8 @@ test("discovers and replays a public completed match without private requests or
   await page.getByLabel("Public API base").selectOption("stg");
   await expect(page.getByLabel("Completed Reversi match")).toHaveText(/match-a2471327.*2026-09-15/);
   await page.getByLabel("Completed Reversi match").selectOption(match.match_id);
-  await expect(page).toHaveURL(/api=https%3A%2F%2Fai-arena-staging-p4ml\.onrender\.com.*match=match-a2471327/);
+  await expect.poll(() => new URL(page.url()).searchParams.get("match")).toBe(match.match_id);
+  await expect.poll(() => new URL(page.url()).searchParams.get("api")).toBe(base);
   await expect(page.getByText("black (hoge1:e651021e) 2")).toBeVisible();
   await expect(page.getByText("white (hoge2:revision-white) 2")).toBeVisible();
   expect(seen).toHaveLength(5);
