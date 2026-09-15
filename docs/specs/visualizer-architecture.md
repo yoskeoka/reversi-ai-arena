@@ -36,9 +36,12 @@ not a program that `ai-arena` hosts or executes.
   major version, and `standard` ruleset. `selected_run_id` is informational
   metadata used to validate the selected public resources; it is never a
   viewer control or query parameter.
-- A supported completed Reversi record has an immutable, calendar-valid RFC
-  3339 UTC `completed_at` timestamp and exactly two complete public
-  `participants` entries. The public spectator contract preserves submitted
+- A supported completed Reversi record has an immutable, calendar-valid
+  `completed_at` timestamp in the platform's RFC 3339 UTC form and exactly two
+  complete public `participants` entries. This form uses uppercase `T` and
+  `Z`, and ordinary seconds from `00` through `59`; leap-second (`:60`)
+  timestamps are unsupported because the public API's timestamp source does
+  not generate them. The public spectator contract preserves submitted
   game-player order: entry zero is Black and entry one is White for standard
   Reversi. Each entry has a non-empty `display_name` and `ai_submission_id`.
   Detail and state resources must contain equal completion timestamps and

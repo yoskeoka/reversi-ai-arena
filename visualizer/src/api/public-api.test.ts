@@ -28,6 +28,7 @@ describe("public replay discovery", () => {
     expect(isSupportedMatch({ ...supported, participants: [{ ...supported.participants![0] }] })).toBe(false);
     expect(isSupportedMatch({ ...supported, completed_at: "2026-02-29T01:02:03Z" })).toBe(false);
     expect(isSupportedMatch({ ...supported, completed_at: "2026-09-15T24:02:03Z" })).toBe(false);
+    expect(isSupportedMatch({ ...supported, completed_at: "2016-12-31T23:59:60Z" })).toBe(false);
   });
 
   it("uses compact canonical UUID labels without truncating other identifiers", () => {
