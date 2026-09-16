@@ -28,12 +28,19 @@ not a program that `ai-arena` hosts or executes.
 ## Data Contract
 
 - The client discovers replay candidates only through anonymous `GET
-  /api/v1-alpha/public/matches`, then reads its selected match through
+  /api/v1-alpha/public/matches` with `game_id=reversi`,
+  `game_version_major=1`, `page=1`, `limit=20`, `sort=completed_at`, and
+  `sort_order=desc`. It adds `ruleset_version` only for a visitor-selected
+  ruleset, then reads its selected match through
   `GET /api/v1-alpha/public/matches/{id}`, `/state`, and `/replay`. Every
   request omits credentials. API bases and match IDs are URL configuration,
   never credentials or private artifact locators.
-- Discovery presents only completed records for the supported Reversi game,
-  major version, and `standard` ruleset. `selected_run_id` is informational
+- The server owns completed-record filtering and newest-first ordering for that
+  Reversi major-version scope. The client validates returned scope and immutable
+  public metadata but neither downloads a global list nor re-sorts it. The
+  page-one response supplies `pagination` and scope-wide
+  `available_ruleset_versions`; those metadata values, not page items or static
+  configuration, define selector options. `selected_run_id` is informational
   metadata used to validate the selected public resources; it is never a
   viewer control or query parameter.
 - A supported completed Reversi record has an immutable, calendar-valid
@@ -49,10 +56,7 @@ not a program that `ai-arena` hosts or executes.
   not affect that comparison. Missing, malformed, or differently shaped
   metadata makes a record unsupported; a selected deep link reports that error
   rather than inventing player colours, names, or timestamps.
-- Discovery orders candidates by newest `completed_at` first, comparing the
-  complete RFC 3339 text (including fractional seconds) after their shared UTC
-  second, with the full match ID as a deterministic tie-breaker. The selector
-  keeps the full ID as its value and deep-link parameter. A `match-` prefix
+- The selector keeps the full ID as its value and deep-link parameter. A `match-` prefix
   followed by a canonical UUID displays as `match-` plus its first eight
   hexadecimal characters; other IDs remain complete. Revisions use the same
   UUID-only shortening rule. The replay summary identifies Black and White by
@@ -60,14 +64,18 @@ not a program that `ai-arena` hosts or executes.
 - The base selector offers local, staging, and production public API profiles.
   A valid `api` query URL outside those profiles remains selected as a custom
   base rather than being replaced. A `match` query remains a deep-link default
-  associated with its API base. With neither API nor match selection the
-  viewer renders its built-in fixture.
-- Ruleset and game-major selection are deliberately unsupported in this
-  version. The viewer validates the replay payload as `ruleset: "standard"`;
-  configurable rulesets remain deferred to `docs/issues/0004-visualizer-ruleset-selection.md`.
+  associated with its API base. An optional `ruleset` query selects and
+  requests a single ruleset; omitting it requests every Reversi major-1
+  ruleset. Changing either API base or ruleset clears `match` and reloads the
+  first page. A deep-linked ruleset missing from response metadata remains
+  visible as unavailable rather than being silently replaced. With neither
+  API nor match selection the viewer renders its built-in fixture.
+- Game-major selection is deliberately unsupported in this version.
 - Terminal replay accepts `format: "reversi/replay"` and `version: "1"` only.
   Its Reversi-owned payload supplies `board_size`, `opening`, `ruleset`, and
-  accepted placement/pass transcript entries. The final exported state is
+  accepted placement/pass transcript entries. Its ruleset must exactly match
+  the selected/list ruleset; its opening must be structurally valid for that
+  ruleset. The final exported state is
   separately fetched from the public state resource and must agree with the
   replayed board, score, turn/player state, and terminal status.
 - Unknown initial-position parameters, incompatible format/version, malformed

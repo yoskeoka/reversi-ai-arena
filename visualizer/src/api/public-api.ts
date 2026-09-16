@@ -8,7 +8,9 @@ export const baseProfiles = [
 
 export type PublicParticipant = { player_id: string; display_name: string; ai_submission_id: string };
 export type PublicMatch = { match_id: string; selected_run_id: string; lifecycle_state: string; game: { game_id: string; game_version: string; ruleset_version: string }; participants?: PublicParticipant[]; completed_at?: string };
-export type PublicMatchListResponse = { items: PublicMatch[] };
+export type PublicMatchListResponse = { pagination: { page: number; limit: number; total: number; total_pages: number }; available_ruleset_versions: string[]; items: PublicMatch[] };
+export type PublicMatchDiscovery = { matches: PublicMatch[]; availableRulesetVersions: string[]; pagination: PublicMatchListResponse["pagination"] };
+export type PublicListOptions = { rulesetVersion?: string };
 export type PublicStateResponse = Omit<PublicMatch, "game"> & { availability: string; state_version?: number; public_state?: unknown; retry_after_ms: number };
 export type PublicReplayResponse = { availability: string; format?: string; version?: string; payload?: unknown };
 export type LoadedReplay = { model: ReplayModel; match: PublicMatch };
@@ -24,27 +26,33 @@ export function normalizeBaseUrl(value: string): string | undefined {
   } catch { return undefined; }
 }
 
-export function isSupportedMatch(value: unknown): value is PublicMatch {
+export function isSupportedMatch(value: unknown, rulesetVersion?: string): value is PublicMatch {
   if (!isRecord(value) || !isRecord(value.game)) return false;
-  return typeof value.match_id === "string" && typeof value.selected_run_id === "string" && value.lifecycle_state === "completed" && value.game.game_id === "reversi" && typeof value.game.game_version === "string" && /^1(?:\.|$)/.test(value.game.game_version) && value.game.ruleset_version === "standard" && hasCompletedReversiMetadata(value);
+  return typeof value.match_id === "string" && typeof value.selected_run_id === "string" && value.lifecycle_state === "completed" && value.game.game_id === "reversi" && typeof value.game.game_version === "string" && /^1(?:\.|$)/.test(value.game.game_version) && isRuleset(value.game.ruleset_version) && (!rulesetVersion || value.game.ruleset_version === rulesetVersion) && hasCompletedReversiMetadata(value);
 }
 export function shortMatchId(matchID: string): string { const uuid = matchID.slice("match-".length); return matchID.startsWith("match-") && canonicalUUID.test(uuid) ? `match-${uuid.slice(0, 8)}` : matchID; }
 export function shortRevision(revision: string): string { return canonicalUUID.test(revision) ? revision.slice(0, 8) : revision; }
 export function matchOptionLabel(match: PublicMatch): string { return `${shortMatchId(match.match_id)} — ${match.completed_at!}`; }
 
-export async function listCompletedMatches(baseUrl: string, fetcher = fetch): Promise<PublicMatch[]> {
+export async function listCompletedMatches(baseUrl: string, options: PublicListOptions = {}, fetcher = fetch): Promise<PublicMatchDiscovery> {
   const base = requireBaseUrl(baseUrl);
-  const response = await json<PublicMatchListResponse>(`${base}/api/v1-alpha/public/matches`, fetcher);
-  if (!Array.isArray(response.items)) throw new Error("public match list is malformed");
-  return response.items.filter(isSupportedMatch).sort(compareCompletedMatches);
+  const query = new URLSearchParams({ game_id: "reversi", game_version_major: "1", page: "1", limit: "20", sort: "completed_at", sort_order: "desc" });
+  if (options.rulesetVersion) query.set("ruleset_version", options.rulesetVersion);
+  const response = await json<PublicMatchListResponse>(`${base}/api/v1-alpha/public/matches?${query}`, fetcher);
+  if (!Array.isArray(response.items) || !isPagination(response.pagination) || !Array.isArray(response.available_ruleset_versions) || !response.available_ruleset_versions.every(isRuleset)) throw new Error("public match list is malformed");
+  if (response.pagination.page !== 1 || response.pagination.limit !== 20) throw new Error("public match list did not honor the discovery page");
+  const availableRulesetVersions = [...new Set(response.available_ruleset_versions)];
+  if (options.rulesetVersion && !availableRulesetVersions.includes(options.rulesetVersion)) return { matches: [], availableRulesetVersions, pagination: response.pagination };
+  if (!response.items.every((item) => isRequestedScope(item, options.rulesetVersion))) throw new Error("public match list is outside the requested scope");
+  return { matches: response.items.filter((item) => isSupportedMatch(item, options.rulesetVersion)), availableRulesetVersions, pagination: response.pagination };
 }
 
-export async function loadReplay(baseUrl: string, matchId: string, fetcher = fetch): Promise<LoadedReplay> {
+export async function loadReplay(baseUrl: string, matchId: string, expectedRulesetVersion?: string, fetcher = fetch): Promise<LoadedReplay> {
   const base = requireBaseUrl(baseUrl);
   const path = `${base}/api/v1-alpha/public/matches/${encodeURIComponent(matchId)}`;
   const [match, state, replay] = await Promise.all([json<PublicMatch>(path, fetcher), json<PublicStateResponse>(`${path}/state`, fetcher), json<PublicReplayResponse>(`${path}/replay`, fetcher)]);
-  if (!isSupportedMatch(match) || !hasCompletedReversiMetadata(state) || state.selected_run_id !== match.selected_run_id || state.lifecycle_state !== match.lifecycle_state || !sameMetadata(match, state) || state.availability !== "available" || replay.availability !== "available" || replay.format !== "reversi/replay" || replay.version !== "1") throw new Error("public replay is unavailable for this match");
-  return { match, model: buildReplay(replay.payload, { status: match.lifecycle_state, public_state: state.public_state }) };
+  if (!isSupportedMatch(match, expectedRulesetVersion) || !hasCompletedReversiMetadata(state) || state.selected_run_id !== match.selected_run_id || state.lifecycle_state !== match.lifecycle_state || !sameMetadata(match, state) || state.availability !== "available" || replay.availability !== "available" || replay.format !== "reversi/replay" || replay.version !== "1") throw new Error("public replay is unavailable for this match");
+  return { match, model: buildReplay(replay.payload, { status: match.lifecycle_state, public_state: state.public_state }, match.game.ruleset_version) };
 }
 
 export class StatePoller {
@@ -63,15 +71,11 @@ function isUTCDate(value: unknown): value is string {
   return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth(year, month) && hour <= 23 && minute <= 59 && second <= 59;
 }
 function isPublicParticipant(value: unknown): value is PublicParticipant { return typeof value === "object" && value !== null && ["player_id", "display_name", "ai_submission_id"].every((key) => typeof (value as Record<string, unknown>)[key] === "string" && Boolean((value as Record<string, string>)[key].trim())); }
+function isPagination(value: unknown): value is PublicMatchListResponse["pagination"] { return isRecord(value) && ["page", "limit", "total", "total_pages"].every((key) => Number.isInteger(value[key]) && (value[key] as number) >= 0); }
+function isRuleset(value: unknown): value is string { return typeof value === "string" && Boolean(value.trim()); }
+function isRequestedScope(value: unknown, rulesetVersion?: string): value is PublicMatch {
+  return isRecord(value) && isRecord(value.game) && value.lifecycle_state === "completed" && value.game.game_id === "reversi" && typeof value.game.game_version === "string" && /^1(?:\.|$)/.test(value.game.game_version) && isRuleset(value.game.ruleset_version) && (!rulesetVersion || value.game.ruleset_version === rulesetVersion);
+}
 function sameMetadata(match: PublicMatch, state: PublicStateResponse): boolean { return match.completed_at === state.completed_at && match.participants!.every((participant, index) => participant.player_id === state.participants?.[index]?.player_id && participant.display_name === state.participants?.[index]?.display_name && participant.ai_submission_id === state.participants?.[index]?.ai_submission_id); }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
 function daysInMonth(year: number, month: number): number { return month === 2 ? (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 29 : 28) : [4, 6, 9, 11].includes(month) ? 30 : 31; }
-function compareCompletedMatches(left: PublicMatch, right: PublicMatch): number {
-  const [leftSecond, leftFraction = ""] = left.completed_at!.slice(0, -1).split(".");
-  const [rightSecond, rightFraction = ""] = right.completed_at!.slice(0, -1).split(".");
-  const secondOrder = rightSecond.localeCompare(leftSecond);
-  if (secondOrder) return secondOrder;
-  const width = Math.max(leftFraction.length, rightFraction.length);
-  const fractionOrder = rightFraction.padEnd(width, "0").localeCompare(leftFraction.padEnd(width, "0"));
-  return fractionOrder || left.match_id.localeCompare(right.match_id);
-}

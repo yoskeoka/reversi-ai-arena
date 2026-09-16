@@ -19,7 +19,7 @@ test("discovers and replays a public completed match without private requests or
   page.on("request", (request) => { if (request.url().startsWith(base)) seen.push(request.url()); });
   await page.route(`${base}/**`, async (route) => {
     const path = new URL(route.request().url()).pathname;
-    const body = path.endsWith("/matches") ? { items: [match] }
+    const body = path.endsWith("/matches") ? { pagination: { page: 1, limit: 20, total: 1, total_pages: 1 }, available_ruleset_versions: ["standard", "alternate"], items: [match] }
       : path.endsWith("/state") ? { selected_run_id: "selected-run", lifecycle_state: "completed", completed_at: match.completed_at, participants: match.participants, availability: "available", retry_after_ms: 0, public_state: { completed: true, current_player: null, scores: { black: 2, white: 2 }, board } }
         : path.endsWith("/replay") ? { availability: "available", format: "reversi/replay", version: "1", payload: { board_size: 8, ruleset: "standard", opening: [{ position: { row: 3, col: 3 }, disc: "white" }, { position: { row: 3, col: 4 }, disc: "black" }, { position: { row: 4, col: 3 }, disc: "black" }, { position: { row: 4, col: 4 }, disc: "white" }], turns: [] } }
           : match;
@@ -27,6 +27,7 @@ test("discovers and replays a public completed match without private requests or
   });
   await page.goto("/");
   await page.getByLabel("Public API base").selectOption("stg");
+  await expect(page.getByLabel("Reversi ruleset")).toHaveText(/All available rulesets.*standard.*alternate/);
   await expect(page.getByLabel("Completed Reversi match")).toHaveText(/match-a2471327.*2026-09-15/);
   await page.getByLabel("Completed Reversi match").selectOption(match.match_id);
   await expect.poll(() => new URL(page.url()).searchParams.get("match")).toBe(match.match_id);
@@ -34,6 +35,36 @@ test("discovers and replays a public completed match without private requests or
   await expect(page.getByText("black (hoge1:e651021e) 2")).toBeVisible();
   await expect(page.getByText("white (hoge2:revision-white) 2")).toBeVisible();
   expect(seen).toHaveLength(5);
+  expect(new URL(seen[0]).searchParams).toMatchObject({});
+  expect(seen[0]).toContain("game_id=reversi");
+  expect(seen[0]).toContain("game_version_major=1");
   expect(seen.every((url) => url.includes("/api/v1-alpha/public/matches") && !url.includes("operator") && !url.includes("artifact"))).toBe(true);
   await expect(page.getByText(/run/i)).not.toBeVisible();
+});
+
+test("changes ruleset through the URL and clears a stale match", async ({ page }) => {
+  const base = "https://ai-arena-staging-p4ml.onrender.com";
+  const seen: string[] = [];
+  await page.route(`${base}/**`, async (route) => {
+    seen.push(route.request().url());
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify({ pagination: { page: 1, limit: 20, total: 0, total_pages: 0 }, available_ruleset_versions: ["standard", "alternate"], items: [] }) });
+  });
+  await page.goto(`/?api=${encodeURIComponent(base)}&ruleset=standard&match=stale-match`);
+  await expect(page.getByLabel("Reversi ruleset")).toHaveValue("standard");
+  await page.getByLabel("Reversi ruleset").selectOption("alternate");
+  await expect.poll(() => new URL(page.url()).searchParams.get("ruleset")).toBe("alternate");
+  await expect.poll(() => new URL(page.url()).searchParams.get("match")).toBeNull();
+  await expect.poll(() => seen.some((url) => new URL(url).searchParams.get("ruleset_version") === "alternate")).toBe(true);
+});
+
+test("does not load a match for an unavailable ruleset deep link", async ({ page }) => {
+  const base = "https://ai-arena-staging-p4ml.onrender.com";
+  const requests: string[] = [];
+  await page.route(`${base}/**`, async (route) => {
+    requests.push(new URL(route.request().url()).pathname);
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify({ pagination: { page: 1, limit: 20, total: 0, total_pages: 0 }, available_ruleset_versions: ["standard"], items: [] }) });
+  });
+  await page.goto(`/?api=${encodeURIComponent(base)}&ruleset=retired&match=match-hidden`);
+  await expect(page.getByText("Ruleset retired is unavailable for this Reversi scope.")).toBeVisible();
+  expect(requests).toHaveLength(1);
 });
