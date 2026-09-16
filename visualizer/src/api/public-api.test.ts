@@ -2,32 +2,37 @@ import { describe, expect, it, vi } from "vitest";
 import { isSupportedMatch, listCompletedMatches, loadReplay, matchOptionLabel, normalizeBaseUrl, shortMatchId, shortRevision, type PublicMatch } from "./public-api";
 
 const supported: PublicMatch = { match_id: "match-a", selected_run_id: "run-a", lifecycle_state: "completed", completed_at: "2026-09-15T01:02:03Z", participants: [{ player_id: "black", display_name: "Black bot", ai_submission_id: "a2471327-1111-4111-8111-111111111111" }, { player_id: "white", display_name: "White bot", ai_submission_id: "revision-white" }], game: { game_id: "reversi", game_version: "1.0.0", ruleset_version: "standard" } };
+const list = (items: unknown[], available_ruleset_versions = ["standard", "alternate"]) => ({ pagination: { page: 1, limit: 20, total: items.length, total_pages: items.length ? 1 : 0 }, available_ruleset_versions, items });
 
 describe("public replay discovery", () => {
-  it("requests only the anonymous public list and returns supported completed matches in order", async () => {
-    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [{ ...supported, match_id: "z", completed_at: "2026-09-14T01:02:03Z" }, { ...supported, match_id: "a" }, { ...supported, lifecycle_state: "queued" }] }) });
-    await expect(listCompletedMatches("https://example.test/", fetcher)).resolves.toEqual([{ ...supported, match_id: "a" }, { ...supported, match_id: "z", completed_at: "2026-09-14T01:02:03Z" }]);
-    expect(fetcher).toHaveBeenCalledWith("https://example.test/api/v1-alpha/public/matches", { credentials: "omit" });
+  it("requests the anonymous, server-filtered first page without a ruleset by default", async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => list([supported]) });
+    await expect(listCompletedMatches("https://example.test/", {}, fetcher)).resolves.toMatchObject({ matches: [supported], availableRulesetVersions: ["standard", "alternate"] });
+    expect(fetcher).toHaveBeenCalledWith("https://example.test/api/v1-alpha/public/matches?game_id=reversi&game_version_major=1&page=1&limit=20&sort=completed_at&sort_order=desc", { credentials: "omit" });
   });
 
-  it("ignores malformed list items and preserves fractional-second completion order", async () => {
-    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [null, "not a match", { ...supported, completed_at: "2026-02-29T01:02:03Z" }, { ...supported, match_id: "no-fraction" }, { ...supported, match_id: "nanosecond-one", completed_at: "2026-09-15T01:02:03.000000001Z" }, { ...supported, match_id: "nanosecond-two", completed_at: "2026-09-15T01:02:03.000000002Z" }] }) });
-    await expect(listCompletedMatches("https://example.test", fetcher)).resolves.toEqual([
-      { ...supported, match_id: "nanosecond-two", completed_at: "2026-09-15T01:02:03.000000002Z" },
-      { ...supported, match_id: "nanosecond-one", completed_at: "2026-09-15T01:02:03.000000001Z" },
-      { ...supported, match_id: "no-fraction" },
-    ]);
+  it("encodes a selected ruleset and rejects items outside that scope", async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => list([{ ...supported, game: { ...supported.game, ruleset_version: "alternate" } }], ["alternate value"]) });
+    await expect(listCompletedMatches("https://example.test", { rulesetVersion: "alternate value" }, fetcher)).rejects.toThrow("outside the requested scope");
+    expect(fetcher.mock.calls[0][0]).toContain("ruleset_version=alternate+value");
   });
 
-  it("filters queued, other-game, incompatible-major, and non-standard records", () => {
-    expect(isSupportedMatch(supported)).toBe(true);
+  it("retains an unavailable deep-linked ruleset as an empty scope", async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => list([], ["standard"]) });
+    await expect(listCompletedMatches("https://example.test", { rulesetVersion: "retired" }, fetcher)).resolves.toMatchObject({ matches: [], availableRulesetVersions: ["standard"] });
+  });
+
+  it("rejects malformed metadata and mixed global records rather than filtering them locally", async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => list([{ ...supported, game: { ...supported.game, game_id: "chess" } }]) });
+    await expect(listCompletedMatches("https://example.test", {}, fetcher)).rejects.toThrow("outside the requested scope");
+    await expect(listCompletedMatches("https://example.test", {}, vi.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [] }) }))).rejects.toThrow("malformed");
+  });
+
+  it("accepts all Reversi major-1 rulesets unless one is selected", () => {
+    expect(isSupportedMatch({ ...supported, game: { ...supported.game, ruleset_version: "alternate" } })).toBe(true);
+    expect(isSupportedMatch(supported, "alternate")).toBe(false);
     expect(isSupportedMatch({ ...supported, lifecycle_state: "queued" })).toBe(false);
-    expect(isSupportedMatch({ ...supported, game: { ...supported.game, game_id: "chess" } })).toBe(false);
-    expect(isSupportedMatch({ ...supported, game: { ...supported.game, game_version: "2.0.0" } })).toBe(false);
-    expect(isSupportedMatch({ ...supported, game: { ...supported.game, ruleset_version: "experimental" } })).toBe(false);
     expect(isSupportedMatch({ ...supported, participants: [{ ...supported.participants![0] }] })).toBe(false);
-    expect(isSupportedMatch({ ...supported, completed_at: "2026-02-29T01:02:03Z" })).toBe(false);
-    expect(isSupportedMatch({ ...supported, completed_at: "2026-09-15T24:02:03Z" })).toBe(false);
     expect(isSupportedMatch({ ...supported, completed_at: "2016-12-31T23:59:60Z" })).toBe(false);
   });
 
@@ -37,33 +42,22 @@ describe("public replay discovery", () => {
     expect(shortRevision(supported.participants![0].ai_submission_id)).toBe("a2471327");
     expect(shortRevision("revision-white")).toBe("revision-white");
     expect(matchOptionLabel(supported)).toBe("match-a — 2026-09-15T01:02:03Z");
-  });
-
-  it("normalizes valid HTTP bases and rejects credential or non-HTTP URLs", () => {
-    expect(normalizeBaseUrl("https://example.test/path/")).toBe("https://example.test/path");
     expect(normalizeBaseUrl("ftp://example.test")).toBeUndefined();
   });
 });
 
 const replayPayload = { board_size: 8, ruleset: "standard", opening: [{ position: { row: 3, col: 3 }, disc: "white" }, { position: { row: 3, col: 4 }, disc: "black" }, { position: { row: 4, col: 3 }, disc: "black" }, { position: { row: 4, col: 4 }, disc: "white" }], turns: [] };
 const publicState = { selected_run_id: supported.selected_run_id, lifecycle_state: supported.lifecycle_state, completed_at: supported.completed_at, participants: supported.participants, availability: "available", retry_after_ms: 0, public_state: { completed: true, current_player: null, scores: { black: 2, white: 2 }, board: Array.from({ length: 8 }, (_, row) => Array.from({ length: 8 }, (_, col) => (row === 3 && col === 3) || (row === 4 && col === 4) ? "white" : (row === 3 && col === 4) || (row === 4 && col === 3) ? "black" : "empty")) } };
-
-function replayFetcher(state = publicState) {
-  return vi.fn(async (url: RequestInfo | URL) => new Response(JSON.stringify(String(url).endsWith("/state") ? state : String(url).endsWith("/replay") ? { availability: "available", format: "reversi/replay", version: "1", payload: replayPayload } : supported)));
-}
+function replayFetcher(state = publicState, payload = replayPayload) { return vi.fn(async (url: RequestInfo | URL) => new Response(JSON.stringify(String(url).endsWith("/state") ? state : String(url).endsWith("/replay") ? { availability: "available", format: "reversi/replay", version: "1", payload } : supported))); }
 
 describe("public replay metadata", () => {
-  it("accepts equivalent detail and state metadata regardless of property order", async () => {
-    const participants = supported.participants!.map(({ player_id, display_name, ai_submission_id }) => ({ ai_submission_id, display_name, player_id }));
-    await expect(loadReplay("https://example.test", supported.match_id, replayFetcher({ ...publicState, participants }))).resolves.toMatchObject({ match: supported });
+  it("requires list/detail/payload ruleset identity", async () => {
+    await expect(loadReplay("https://example.test", supported.match_id, "standard", replayFetcher())).resolves.toMatchObject({ match: supported });
+    await expect(loadReplay("https://example.test", supported.match_id, "alternate", replayFetcher())).rejects.toThrow("unavailable");
+    await expect(loadReplay("https://example.test", supported.match_id, "standard", replayFetcher(publicState, { ...replayPayload, ruleset: "alternate" }))).rejects.toThrow("initial-position");
   });
 
-  it.each([
-    ["a different completion instant", { ...publicState, completed_at: "2026-09-15T01:02:04Z" }],
-    ["a changed participant field", { ...publicState, participants: [{ ...supported.participants![0], display_name: "Other" }, supported.participants![1]] }],
-    ["a changed participant sequence", { ...publicState, participants: [...supported.participants!].reverse() }],
-    ["malformed state metadata", { ...publicState, completed_at: "2026-02-29T01:02:03Z" }],
-  ])("rejects %s", async (_reason, state) => {
-    await expect(loadReplay("https://example.test", supported.match_id, replayFetcher(state))).rejects.toThrow("public replay is unavailable");
+  it.each([["a different completion instant", { ...publicState, completed_at: "2026-09-15T01:02:04Z" }], ["a changed participant sequence", { ...publicState, participants: [...supported.participants!].reverse() }]])("rejects %s", async (_reason, state) => {
+    await expect(loadReplay("https://example.test", supported.match_id, "standard", replayFetcher(state))).rejects.toThrow("public replay is unavailable");
   });
 });

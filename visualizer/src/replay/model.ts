@@ -17,31 +17,31 @@ export type ReplayModel = { frames: readonly ReplayFrame[]; turns: ReadonlyArray
 const directions = [-1, 0, 1].flatMap((row) => [-1, 0, 1].map((col) => [row, col] as const)).filter(([row, col]) => row !== 0 || col !== 0);
 const other = (color: Color): Color => color === "black" ? "white" : "black";
 const clone = (board: Disc[][]) => board.map((row) => [...row]);
-const standardOpening = [{ position: { row: 3, col: 3 }, disc: "white" }, { position: { row: 3, col: 4 }, disc: "black" }, { position: { row: 4, col: 3 }, disc: "black" }, { position: { row: 4, col: 4 }, disc: "white" }] as const;
-
-export function decodeReplay(value: unknown): ReplayPayload {
+export function decodeReplay(value: unknown, expectedRuleset: string): ReplayPayload {
   if (!isRecord(value)) throw new Error("public replay payload must be an object");
   const payload = value as Partial<ReplayPayload>;
-  if (payload.board_size !== 8 || payload.ruleset !== "standard" || !Array.isArray(payload.opening) || !Array.isArray(payload.turns)) {
+  if (payload.board_size !== 8 || payload.ruleset !== expectedRuleset || !Array.isArray(payload.opening) || !Array.isArray(payload.turns)) {
     throw new Error("unsupported Reversi replay initial-position parameters");
-  }
-  if (payload.opening.length !== standardOpening.length || !payload.opening.every((placement, index) => placement?.disc === standardOpening[index].disc && placement.position?.row === standardOpening[index].position.row && placement.position?.col === standardOpening[index].position.col)) {
-    throw new Error("unsupported Reversi replay opening");
   }
   return payload as ReplayPayload;
 }
 
-export function buildReplay(payloadValue: unknown, exportedValue: unknown): ReplayModel {
-  const payload = decodeReplay(payloadValue);
+export function buildReplay(payloadValue: unknown, exportedValue: unknown, expectedRuleset: string): ReplayModel {
+  const payload = decodeReplay(payloadValue, expectedRuleset);
   const exported = exportedValue as ExportedState;
   if (!isRecord(exported) || exported.status !== "completed" || !isRecord(exported.public_state) || exported.public_state.completed !== true) {
     throw new Error("a completed final exported state is required");
   }
   const board = Array.from({ length: payload.board_size }, () => Array<Disc>(payload.board_size).fill("empty"));
+  const occupied = new Set<string>();
   for (const placement of payload.opening) {
     if (!placement?.position || !inBounds(placement.position.row, placement.position.col) || !isDisc(placement.disc) || placement.disc === "empty") throw new Error("malformed opening");
+    const position = `${placement.position.row},${placement.position.col}`;
+    if (occupied.has(position)) throw new Error("malformed opening");
+    occupied.add(position);
     board[placement.position.row][placement.position.col] = placement.disc;
   }
+  if (!occupied.size || !payload.opening.some((placement) => placement.disc === "black") || !payload.opening.some((placement) => placement.disc === "white")) throw new Error("malformed opening");
   let current: Color | null = "black";
   const frames: ReplayFrame[] = [frame(board, current, 1)];
   for (const turn of payload.turns) {
