@@ -56,3 +56,15 @@ test("changes ruleset through the URL and clears a stale match", async ({ page }
   await expect.poll(() => new URL(page.url()).searchParams.get("match")).toBeNull();
   await expect.poll(() => seen.some((url) => new URL(url).searchParams.get("ruleset_version") === "alternate")).toBe(true);
 });
+
+test("does not load a match for an unavailable ruleset deep link", async ({ page }) => {
+  const base = "https://ai-arena-staging-p4ml.onrender.com";
+  const requests: string[] = [];
+  await page.route(`${base}/**`, async (route) => {
+    requests.push(new URL(route.request().url()).pathname);
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify({ pagination: { page: 1, limit: 20, total: 0, total_pages: 0 }, available_ruleset_versions: ["standard"], items: [] }) });
+  });
+  await page.goto(`/?api=${encodeURIComponent(base)}&ruleset=retired&match=match-hidden`);
+  await expect(page.getByText("Ruleset retired is unavailable for this Reversi scope.")).toBeVisible();
+  expect(requests).toHaveLength(1);
+});

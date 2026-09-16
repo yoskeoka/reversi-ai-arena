@@ -22,8 +22,9 @@ async function start() {
     const discovery = await listCompletedMatches(base, { rulesetVersion: ruleset });
     if (current !== generation) return;
     const selected = discovery.matches.find((match) => match.match_id === matchId);
+    const rulesetAvailable = !ruleset || discovery.availableRulesetVersions.includes(ruleset);
     renderDiscovery(base, matchId, ruleset, discovery);
-    if (matchId) try {
+    if (matchId && rulesetAvailable) try {
       const expectedRuleset = ruleset ?? selected?.game.ruleset_version;
       const replay = await loadReplay(base, matchId, expectedRuleset);
       if (current === generation) render(replay.model, base, matchId, replay.match, ruleset);

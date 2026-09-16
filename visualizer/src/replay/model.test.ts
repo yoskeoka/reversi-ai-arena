@@ -24,6 +24,7 @@ describe("public Reversi replay", () => {
   it("rejects a non-standard opening", () => {
     const empty = Array.from({ length: 8 }, () => Array(8).fill("empty"));
     expect(() => buildReplay({ board_size: 8, opening: [], ruleset: "standard", turns: [] }, { status: "completed", public_state: { completed: true, current_player: null, scores: { black: 0, white: 0 }, board: empty } }, "standard")).toThrow("opening");
+    expect(() => buildReplay({ board_size: 8, opening: [{ position: { row: 2, col: 2 }, disc: "white" }, { position: { row: 2, col: 3 }, disc: "black" }], ruleset: "standard", turns: [] }, {}, "standard")).toThrow("opening");
   });
   it("accepts a structurally valid non-standard opening only for its selected ruleset", () => {
     const alternate = [{ position: { row: 2, col: 2 }, disc: "white" }, { position: { row: 2, col: 3 }, disc: "black" }, { position: { row: 3, col: 2 }, disc: "black" }, { position: { row: 3, col: 3 }, disc: "white" }];
