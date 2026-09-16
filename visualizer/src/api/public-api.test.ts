@@ -28,6 +28,11 @@ describe("public replay discovery", () => {
     await expect(listCompletedMatches("https://example.test", {}, vi.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [] }) }))).rejects.toThrow("malformed");
   });
 
+  it("omits legacy scoped records that lack immutable public metadata", async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => list([supported, { ...supported, match_id: "legacy", completed_at: undefined }]) });
+    await expect(listCompletedMatches("https://example.test", {}, fetcher)).resolves.toMatchObject({ matches: [supported] });
+  });
+
   it("accepts all Reversi major-1 rulesets unless one is selected", () => {
     expect(isSupportedMatch({ ...supported, game: { ...supported.game, ruleset_version: "alternate" } })).toBe(true);
     expect(isSupportedMatch(supported, "alternate")).toBe(false);

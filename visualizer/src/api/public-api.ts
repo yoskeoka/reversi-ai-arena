@@ -43,8 +43,8 @@ export async function listCompletedMatches(baseUrl: string, options: PublicListO
   if (response.pagination.page !== 1 || response.pagination.limit !== 20) throw new Error("public match list did not honor the discovery page");
   const availableRulesetVersions = [...new Set(response.available_ruleset_versions)];
   if (options.rulesetVersion && !availableRulesetVersions.includes(options.rulesetVersion)) return { matches: [], availableRulesetVersions, pagination: response.pagination };
-  if (!response.items.every((item) => isSupportedMatch(item, options.rulesetVersion))) throw new Error("public match list is outside the requested scope");
-  return { matches: response.items, availableRulesetVersions, pagination: response.pagination };
+  if (!response.items.every((item) => isRequestedScope(item, options.rulesetVersion))) throw new Error("public match list is outside the requested scope");
+  return { matches: response.items.filter((item) => isSupportedMatch(item, options.rulesetVersion)), availableRulesetVersions, pagination: response.pagination };
 }
 
 export async function loadReplay(baseUrl: string, matchId: string, expectedRulesetVersion?: string, fetcher = fetch): Promise<LoadedReplay> {
@@ -73,6 +73,9 @@ function isUTCDate(value: unknown): value is string {
 function isPublicParticipant(value: unknown): value is PublicParticipant { return typeof value === "object" && value !== null && ["player_id", "display_name", "ai_submission_id"].every((key) => typeof (value as Record<string, unknown>)[key] === "string" && Boolean((value as Record<string, string>)[key].trim())); }
 function isPagination(value: unknown): value is PublicMatchListResponse["pagination"] { return isRecord(value) && ["page", "limit", "total", "total_pages"].every((key) => Number.isInteger(value[key]) && (value[key] as number) >= 0); }
 function isRuleset(value: unknown): value is string { return typeof value === "string" && Boolean(value.trim()); }
+function isRequestedScope(value: unknown, rulesetVersion?: string): value is PublicMatch {
+  return isRecord(value) && isRecord(value.game) && value.lifecycle_state === "completed" && value.game.game_id === "reversi" && typeof value.game.game_version === "string" && /^1(?:\.|$)/.test(value.game.game_version) && isRuleset(value.game.ruleset_version) && (!rulesetVersion || value.game.ruleset_version === rulesetVersion);
+}
 function sameMetadata(match: PublicMatch, state: PublicStateResponse): boolean { return match.completed_at === state.completed_at && match.participants!.every((participant, index) => participant.player_id === state.participants?.[index]?.player_id && participant.display_name === state.participants?.[index]?.display_name && participant.ai_submission_id === state.participants?.[index]?.ai_submission_id); }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
 function daysInMonth(year: number, month: number): number { return month === 2 ? (year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 29 : 28) : [4, 6, 9, 11].includes(month) ? 30 : 31; }
