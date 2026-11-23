@@ -20,10 +20,11 @@ It fixes:
 - `game_version` is `1.2.0`.
 - `ruleset_version` is `standard`, `standard-xot-large`, or `standard-xot-small`.
 
-The selected competition ruleset is fixed for the match. Large is the default
-choice for XOT competitions. Omission at direct game-master startup selects
-standard. The v0.3.0 WASI runner supplies `AI_ARENA_RULESET_VERSION` before
-the metadata handshake. Empty or unknown identifiers fail startup.
+The competition's ruleset stays fixed for the match. Large is the default
+XOT choice. A direct game-master launch with no ruleset uses standard.
+
+The v0.3.0 WASI runner supplies `AI_ARENA_RULESET_VERSION` before reading
+metadata. Empty or unknown identifiers fail startup.
 
 `game_version` is the source-controlled release identity. A tagged release
 uses the exact `v${game_version}` Git tag, and the same value must appear in
@@ -52,9 +53,10 @@ or decision billing.
 
 A supplied runner `rng_seed` is a UTF-8 string. The game hashes the seed with
 SHA-256 and a big-endian counter starting at zero, using the first 64 bits and
-rejection sampling to choose a row uniformly without modulo bias. A fresh XOT
-match without a runner seed uses the WASI wall clock and match player identities
-to derive a seed. The runtime must supply the clock. Standard ignores the seed.
+rejection sampling to give every row equal odds.
+
+For a fresh XOT match without a runner seed, the game derives a seed from
+the WASI wall clock and player IDs. Standard ignores the seed.
 
 The per-player init payload must identify:
 
@@ -160,15 +162,15 @@ format `reversi/replay`, version `1`, and a JSON payload. The payload contains
 the four standard center placements as `opening`, the selected `ruleset`, and
 only the ordered accepted AI placements and passes in `turns`. XOT adds
 `opening_moves`, an array of exactly eight board coordinates played alternately
-from the center position. Its initial frame is the resulting turn 9 board.
-Standard omits `opening_moves`, preserving the historical format. It contains no private
-visible-state, runner history, stderr, or artifact locator.
+from the center position. Its initial frame shows the turn 9 board.
 
-The consumer replays those entries from the declared opening and validates its
-terminal state against the separately published exported snapshot. An
-immediate loss before the first AI move has an empty AI transcript and remains valid when the
-exported state identifies a surviving winner. A non-completed match has no
-public replay.
+Standard keeps its historical format and omits `opening_moves`. Only
+completed matches publish replays. The payload excludes private state,
+runner history, stderr, and artifact locators.
+
+The consumer checks its replayed final state against the published snapshot.
+A forfeit before the first AI move leaves the AI transcript empty. The
+exported state identifies the winning player.
 
 ## Result Contract
 

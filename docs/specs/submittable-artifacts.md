@@ -66,6 +66,8 @@ Version `v1.2.0` uses the operator preparation procedure in the
 [XOT reference](../references/xot.md). Preparation validates the official input
 bytes, row counts, unique coordinate sequences, and legality in the Reversi
 engine before compiling both lists into the WASM artifact. Missing or modified
-input fails the build. Matches require no download. While the source pages
-provide no explicit redistribution terms, tagged CI verifies the bundles and
-operators prepare the bundle from source for their own deployment.
+input fails the build. The built bundle runs offline.
+
+The source pages provide no explicit redistribution terms. Tagged CI builds
+and verifies the bundles. Operators build the bundle from source for their
+own deployment.

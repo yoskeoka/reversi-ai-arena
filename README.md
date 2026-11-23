@@ -26,7 +26,7 @@ For development connections to local, staging, or production `ai-arena`, see
 [`DEVELOPMENT.md`](DEVELOPMENT.md). See
 [`visualizer/README.md`](visualizer/README.md) for visualizer-specific notes.
 
-## Build And Validate Official Artifacts
+## Build and validate the game bundles
 
 The official Reversi game master and reference AI are separate WASM/WASI
 `arena-bundle/v1` ZIPs. Build deterministic development artifacts and validate
@@ -37,14 +37,14 @@ tools/release-packager/fetch-xot.sh .tmp/xot
 XOT_OPENINGS_DIR="$PWD/.tmp/xot" AI_ARENA_DIR=/path/to/ai-arena make verify-release-artifacts
 ```
 
-Use an ai-arena v0.3.0 checkout at `212839f537274d8874a2e29afc2bb292cd842dd0`.
-Verification builds `dist/reversi-game-dev.arena.zip`,
-`dist/reversi-rust-reference-ai-dev.arena.zip`, and `dist/SHA256SUMS`,
-then exercises these exact ZIPs through the upstream WASI runner and
-registration services. It requires `jq`. Register the same game bundle for
-`standard`, `standard-xot-large` (the default XOT choice), or `standard-xot-small`.
-For tagged operator packaging and XOT data provenance, see the
-[XOT reference](docs/references/xot.md).
+Use `jq` and an ai-arena v0.3.0 checkout at `212839f537274d8874a2e29afc2bb292cd842dd0`.
+The command builds `dist/reversi-game-dev.arena.zip`,
+`dist/reversi-rust-reference-ai-dev.arena.zip`, and `dist/SHA256SUMS`.
+It tests both ZIPs through the WASI runner and registration services.
+
+Register the same game bundle for `standard`, `standard-xot-large` (the
+default XOT choice), or `standard-xot-small`. The XOT reference covers the
+source data and the build steps for a release tag. [XOT reference](docs/references/xot.md)
 
 ## Run A Native Development Match Through `arena-runner`
 

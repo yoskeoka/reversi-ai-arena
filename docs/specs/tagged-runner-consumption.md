@@ -32,9 +32,10 @@ development-only and cannot satisfy release or staging acceptance.
 The bundle runner invocation uses the game ZIP once and the exact AI ZIP for
 two separately named players. A fresh run selects one of the three rulesets with `--ruleset`. Its
 `result-summary.json` and `exported-snapshot.json` must both report
-`completed`. Resume selects the ruleset recorded in the snapshot. The
-v0.3.0 CLI bundle wrapper omits the optional public replay RPC; verification
-of the published replay uses the v0.3.0 operator registration and worker path.
+`completed`. Resume selects the ruleset recorded in the snapshot.
+
+The v0.3.0 CLI bundle wrapper omits the optional public replay RPC. The
+operator registration and worker test verifies the published replay.
 
 ## Scope Limits
 
