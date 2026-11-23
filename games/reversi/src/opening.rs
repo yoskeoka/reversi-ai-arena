@@ -61,13 +61,13 @@ pub fn initial_state(opening: Option<&OpeningMoves>) -> Result<MatchState, Strin
     Ok(state)
 }
 
-fn parse_row(row: &[u8]) -> Result<OpeningMoves, String> {
-    if row.len() != ROW_BYTES || row[ROW_BYTES - 1] != b'\n' {
+fn parse_row(row: &[u8; ROW_BYTES]) -> Result<OpeningMoves, String> {
+    let (coordinates, terminator) = row.as_chunks::<2>();
+    if terminator != b"\n" {
         return Err("expected eight coordinates and LF".into());
     }
     let mut moves = [Position { row: 0, col: 0 }; XOT_LEN];
-    for (position, coordinate) in moves.iter_mut().zip(row.chunks_exact(2)) {
-        let [file, rank] = [coordinate[0], coordinate[1]];
+    for (position, &[file, rank]) in moves.iter_mut().zip(coordinates) {
         if !(b'a'..=b'h').contains(&file) || !(b'1'..=b'8').contains(&rank) {
             return Err("invalid XOT coordinate".into());
         }
@@ -86,11 +86,12 @@ pub fn validate_corpus(data: &[u8], rows: usize, expected_sha256: &str) -> Resul
             "SHA-256 mismatch: expected {expected_sha256}, got {digest}"
         ));
     }
-    if data.len() != rows * ROW_BYTES {
+    let (records, extra) = data.as_chunks::<ROW_BYTES>();
+    if records.len() != rows || !extra.is_empty() {
         return Err(format!("expected {rows} XOT rows of {ROW_BYTES} bytes"));
     }
     let mut seen = HashSet::with_capacity(rows);
-    for (index, row) in data.chunks_exact(ROW_BYTES).enumerate() {
+    for (index, row) in records.iter().enumerate() {
         let result = if seen.insert(row) {
             parse_row(row).and_then(|moves| initial_state(Some(&moves)).map(|_| ()))
         } else {
@@ -102,12 +103,12 @@ pub fn validate_corpus(data: &[u8], rows: usize, expected_sha256: &str) -> Resul
 }
 
 pub fn select_opening(data: &[u8], seed: &[u8]) -> Result<OpeningMoves, String> {
-    let rows = data.len() / ROW_BYTES;
-    if rows == 0 || !data.len().is_multiple_of(ROW_BYTES) {
+    let (rows, extra) = data.as_chunks::<ROW_BYTES>();
+    if rows.is_empty() || !extra.is_empty() {
         return Err("XOT opening data is missing or malformed".to_string());
     }
-    let row = select_index(rows as u64, seed) as usize;
-    parse_row(&data[row * ROW_BYTES..(row + 1) * ROW_BYTES])
+    let row = select_index(rows.len() as u64, seed) as usize;
+    parse_row(&rows[row])
 }
 
 fn select_index(rows: u64, seed: &[u8]) -> u64 {
