@@ -20,6 +20,14 @@ An operator can run a Reversi match with an XOT opening: the game master selects
 
 Use the runner-provided seed for reproducible unbiased list-row selection, defining the missing-seed behavior with actual WASI runtime support. Persist enough information for replay and resume independent of seed or later list changes. Invalid configuration and data fail explicitly. Player init and public snapshots must agree with the state actually used; automatic moves are not billed as AI decisions. Define whether the replay exposes the eight moves or the resulting opening and ensure its transcript can be verified to the final state, including immediate-loss and pass cases.
 
+### Pinned platform constraint discovered during execution
+
+At the pinned `ai-arena` commit `bd2de02252e0e5925aa19402c1ee569588d05a10`, game bundle admission stores the manifest's static runtime arguments in a descriptor. However, `internal/platform/registry/store.go` rejects a second distinct artifact with the same game ID and exact game version. `GeneralSubmissionService` resolves a registration by game ID and major version, and the registry selects the latest release within that major, before checking supported rulesets. Giving the bundles different minor or patch versions therefore does not allow the operator to select all three concurrently either. Direct `arena-runner` bundle execution is a separate path and does not establish general-lane registration support.
+
+The platform needs a registration and resolution path that selects an immutable game artifact or ruleset-specific runtime configuration for each registration while preserving existing registrations. Verify that path at a newly pinned platform revision before claiming concurrent standard, XOT large, and XOT small support. No platform protocol or runtime change is authorized by this plan.
+
+On 2026-11-24 both downloaded files matched the SHA-256 values above. An independent board replay checked the format, uniqueness, and legality of all 10,784 large and 3,623 small eight-move rows; the required verification through this repository's rules engine remains outstanding. The source describes downloading the lists for play but does not state an explicit redistribution license.
+
 ## Execution and verification
 
 1. Check source data terms and verify count, format and digest; replay every entry through the rules engine and ensure legal, nonterminal eight-move sequences. Record any findings accurately.
