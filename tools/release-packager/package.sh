@@ -4,6 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 release_version="${1:?usage: package.sh <release-version> [output-dir]}"
 output_dir="${2:-${repo_root}/dist}"
+: "${XOT_OPENINGS_DIR:?set XOT_OPENINGS_DIR to the absolute path of the official XOT input directory}"
 epoch="${SOURCE_DATE_EPOCH:-315532800}" # 1980-01-01, the ZIP epoch
 if [[ "${epoch}" != "315532800" ]]; then
     echo "SOURCE_DATE_EPOCH must be 315532800 for reproducible ZIP timestamps" >&2
@@ -15,9 +16,10 @@ output_dir="$(cd "${output_dir}" && pwd)"
 stage="$(mktemp -d)"
 trap 'rm -rf "${stage}"' EXIT
 
+bundle_target_dir="${repo_root}/target/release-bundle"
 export CARGO_HOME="${CARGO_HOME:-/tmp/reversi-ai-arena-cargo-home}"
-cargo build --release --target wasm32-wasip1 -p reversi-gamemaster --bin reversi-gamemaster
-cargo build --release --target wasm32-wasip1 -p reversi-rust-reference-player --bin reversi-rust-reference-player
+cargo build --locked --target-dir "${bundle_target_dir}" --release --target wasm32-wasip1 -p reversi-gamemaster --features xot --bin reversi-gamemaster
+cargo build --locked --target-dir "${bundle_target_dir}" --release --target wasm32-wasip1 -p reversi-rust-reference-player --bin reversi-rust-reference-player
 
 package_bundle() {
     local artifact_name="$1"
@@ -45,12 +47,12 @@ cargo run --quiet -p reversi-release-packager -- ai-manifest > "${ai_manifest}"
 package_bundle \
     "reversi-game-${release_version}.arena.zip" \
     "${game_manifest}" \
-    "${repo_root}/target/wasm32-wasip1/release/reversi-gamemaster.wasm" \
+    "${bundle_target_dir}/wasm32-wasip1/release/reversi-gamemaster.wasm" \
     reversi-gamemaster.wasm
 package_bundle \
     "reversi-rust-reference-ai-${release_version}.arena.zip" \
     "${ai_manifest}" \
-    "${repo_root}/target/wasm32-wasip1/release/reversi-rust-reference-player.wasm" \
+    "${bundle_target_dir}/wasm32-wasip1/release/reversi-rust-reference-player.wasm" \
     rust-reference-ai.wasm
 
 (

@@ -8,9 +8,11 @@ use serde_json::Value;
 
 use crate::engine::{BOARD_SIZE, MatchState};
 use crate::{
-    Action, GAME_ID, GAME_VERSION, InitState, LegalActionHint, PlayerColor, RULESET_VERSION,
-    ReversiActionStatus, ReversiDecisionStep, ReversiGameMasterInitState,
+    Action, GAME_ID, GAME_VERSION, InitState, LegalActionHint, PlayerColor, ReversiActionStatus,
+    ReversiDecisionStep, ReversiGameMasterInitState,
 };
+
+use crate::opening::{OpeningMoves, Ruleset, initial_state};
 
 pub const DECISION_DEADLINE_MS: u64 = 1_000;
 
@@ -25,6 +27,8 @@ pub struct SnapshotState {
     pub winner_by_forfeit: Option<PlayerColor>,
     #[serde(default)]
     pub public_replay_turns: Vec<crate::PublicReplayTurn>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opening_moves: Option<OpeningMoves>,
 }
 
 impl From<&MatchState> for SnapshotState {
@@ -37,6 +41,7 @@ impl From<&MatchState> for SnapshotState {
             completed: value.completed,
             winner_by_forfeit: value.winner_by_forfeit,
             public_replay_turns: Vec::new(),
+            opening_moves: None,
         }
     }
 }
@@ -60,6 +65,8 @@ pub struct ReversiGameMaster {
     pub players: Vec<gamemaster::Player>,
     pub player_colors: BTreeMap<String, PlayerColor>,
     pub state: MatchState,
+    ruleset: Ruleset,
+    opening_moves: Option<OpeningMoves>,
     pub last_action_statuses: BTreeMap<String, ReversiActionStatus>,
     pub stderr_bytes: BTreeMap<String, i32>,
     pub public_replay_turns: Vec<crate::PublicReplayTurn>,
@@ -73,6 +80,24 @@ impl ReversiGameMaster {
             gamemaster::Snapshot<SnapshotState, crate::VisibleState, crate::Action>,
         >,
     ) -> Result<(Self, ReversiGameMasterInitState), String> {
+        Self::initialize_for(
+            match_id,
+            players,
+            resume_snapshot,
+            Ruleset::Standard,
+            || Ok(None),
+        )
+    }
+
+    pub fn initialize_for(
+        match_id: impl Into<String>,
+        players: Vec<gamemaster::Player>,
+        resume_snapshot: Option<
+            gamemaster::Snapshot<SnapshotState, crate::VisibleState, crate::Action>,
+        >,
+        ruleset: Ruleset,
+        select: impl FnOnce() -> Result<Option<OpeningMoves>, String>,
+    ) -> Result<(Self, ReversiGameMasterInitState), String> {
         if players.len() != 2 {
             return Err("reversi requires exactly two players".to_string());
         }
@@ -81,16 +106,64 @@ impl ReversiGameMaster {
         player_colors.insert(players[0].player_id.clone(), PlayerColor::Black);
         player_colors.insert(players[1].player_id.clone(), PlayerColor::White);
 
-        let (state, public_replay_turns) = resume_snapshot
-            .as_ref()
-            .and_then(|snapshot| snapshot.game_state.clone())
-            .map(|snapshot| {
-                (
-                    MatchState::from(snapshot.clone()),
-                    snapshot.public_replay_turns,
-                )
-            })
-            .unwrap_or_else(|| (MatchState::new_standard(), Vec::new()));
+        let saved = match resume_snapshot.as_ref() {
+            Some(snapshot) => {
+                if snapshot
+                    .ruleset_version
+                    .as_deref()
+                    .unwrap_or(Ruleset::Standard.id())
+                    != ruleset.id()
+                {
+                    return Err("snapshot ruleset does not match startup ruleset".to_string());
+                }
+                match snapshot.game_state.clone() {
+                    Some(state) => Some(state),
+                    None if ruleset.is_xot() => {
+                        return Err("XOT snapshot is missing game state".to_string());
+                    }
+                    None => None,
+                }
+            }
+            None => None,
+        };
+        let opening_moves = match &saved {
+            Some(snapshot) => snapshot.opening_moves,
+            None => select()?,
+        };
+        if ruleset.is_xot() != opening_moves.is_some() {
+            return Err("opening sequence does not match ruleset".to_string());
+        }
+        let initial = initial_state(opening_moves.as_ref())?;
+        let (state, public_replay_turns) = match saved {
+            Some(mut snapshot) => {
+                let turns = std::mem::take(&mut snapshot.public_replay_turns);
+                let state = MatchState::from(snapshot);
+                if ruleset.is_xot() {
+                    let mut replayed = initial.clone();
+                    for turn in &turns {
+                        if replayed.current_player != Some(turn.color)
+                            || player_colors.get(&turn.player_id) != Some(&turn.color)
+                        {
+                            return Err("XOT snapshot contains an out-of-turn action".into());
+                        }
+                        replayed.apply_valid_action(&turn.action)?;
+                    }
+                    if let Some(winner) = state.winner_by_forfeit {
+                        let loser = winner.opponent();
+                        if replayed.current_player != Some(loser) {
+                            return Err("XOT snapshot contains an invalid forfeit".into());
+                        }
+                        replayed.forfeit(loser);
+                    }
+                    if replayed != state {
+                        return Err("XOT snapshot state disagrees with its transcript".into());
+                    }
+                }
+                (state, turns)
+            }
+            None => (initial.clone(), Vec::new()),
+        };
+        let placements = initial.placements();
         let mut per_player = BTreeMap::new();
         for player in &players {
             let color = *player_colors
@@ -101,8 +174,9 @@ impl ReversiGameMaster {
                 InitState {
                     you_are: color,
                     board_size: BOARD_SIZE as u8,
-                    opening: MatchState::opening(),
-                    ruleset: RULESET_VERSION.to_string(),
+                    opening: placements.clone(),
+                    ruleset: ruleset.id().to_string(),
+                    initial_turn: ruleset.is_xot().then_some(initial.turn as u32),
                 },
             );
         }
@@ -139,6 +213,8 @@ impl ReversiGameMaster {
                 players,
                 player_colors,
                 state,
+                ruleset,
+                opening_moves,
                 last_action_statuses,
                 stderr_bytes,
                 public_replay_turns,
@@ -271,11 +347,12 @@ impl ReversiGameMaster {
             match_id: self.match_id.clone(),
             game_id: Some(GAME_ID.to_string()),
             game_version: Some(GAME_VERSION.to_string()),
-            ruleset_version: Some(RULESET_VERSION.to_string()),
+            ruleset_version: Some(self.ruleset.id().to_string()),
             turn: self.state.turn,
             status: self.status(),
             game_state: Some(SnapshotState {
                 public_replay_turns: self.public_replay_turns.clone(),
+                opening_moves: self.opening_moves,
                 ..SnapshotState::from(&self.state)
             }),
             per_player,
@@ -294,7 +371,7 @@ impl ReversiGameMaster {
             match_id: self.match_id.clone(),
             game_id: Some(GAME_ID.to_string()),
             game_version: Some(GAME_VERSION.to_string()),
-            ruleset_version: Some(RULESET_VERSION.to_string()),
+            ruleset_version: Some(self.ruleset.id().to_string()),
             turn: self.state.turn,
             status: self.status(),
             public_state: Some(self.state.public_state()),
@@ -342,7 +419,8 @@ impl ReversiGameMaster {
             payload: serde_json::to_value(crate::PublicReplayPayload {
                 board_size: BOARD_SIZE as u8,
                 opening: MatchState::opening(),
-                ruleset: RULESET_VERSION.to_string(),
+                ruleset: self.ruleset.id().to_string(),
+                opening_moves: self.opening_moves,
                 turns: self.public_replay_turns.clone(),
             })
             .map_err(|err| format!("encode public replay: {err}"))?,
@@ -459,5 +537,120 @@ mod tests {
         let (resumed, _) =
             ReversiGameMaster::initialize("m1", players(), Some(snapshot)).expect("resume");
         assert_eq!(resumed.public_replay_turns.len(), 1);
+    }
+
+    #[test]
+    fn xot_first_request_and_first_turn_forfeit_share_the_opening() {
+        let moves = crate::opening::select_opening(b"f5d6c4d3c2b3b4b5\n", b"test").unwrap();
+        for ruleset in [Ruleset::XotLarge, Ruleset::XotSmall] {
+            let (mut master, initialized) =
+                ReversiGameMaster::initialize_for("xot", players(), None, ruleset, || {
+                    Ok(Some(moves))
+                })
+                .unwrap();
+            let step = master.next_decision_step().unwrap();
+            assert_eq!(step.turn, 9);
+            assert_eq!(step.requests[0].player_id, "p1");
+            let visible = step.requests[0].visible_state.as_ref().unwrap();
+            assert_eq!(visible.board, master.state.public_state().board);
+            for player in initialized.per_player.values() {
+                assert_eq!(player.opening.len(), 12);
+                assert_eq!(player.opening, master.state.placements());
+                assert_eq!(player.initial_turn, Some(9));
+                assert_eq!(player.ruleset, ruleset.id());
+            }
+            master
+                .apply_decision_results(&[ReversiActionStatus {
+                    player_id: "p1".into(),
+                    action_status: ActionDecision::NoAction,
+                    failure_reason: Some(FailureReason::InvalidTimeout),
+                    action: None,
+                }])
+                .unwrap();
+            let replay = master.current_public_replay().unwrap();
+            assert_eq!(replay.payload["opening_moves"], serde_json::json!(moves));
+            assert_eq!(replay.payload["turns"], serde_json::json!([]));
+            assert_eq!(master.current_exported_snapshot().turn, 9);
+            assert_eq!(master.state.summary().winners, [PlayerColor::White]);
+        }
+    }
+
+    #[test]
+    fn xot_resume_preserves_accepted_turns_and_never_selects_again() {
+        let ruleset = Ruleset::XotSmall;
+        let script = include_str!("../../../testdata/reversi/scripted-games/end-with-1-empty-cell-forced-pass-for-both.txt").trim();
+        let first_eight = format!("{}\n", &script[..16]);
+        let moves = crate::opening::select_opening(first_eight.as_bytes(), b"test").unwrap();
+        let (mut master, initialized) =
+            ReversiGameMaster::initialize_for("xot", players(), None, ruleset, || Ok(Some(moves)))
+                .unwrap();
+        let mut actions = &script[16..];
+        while let Some(step) = master.next_decision_step() {
+            let (action, remaining) = if let Some(rest) = actions.strip_prefix("pass") {
+                (
+                    Action {
+                        kind: crate::ActionKind::Pass,
+                        position: None,
+                    },
+                    rest,
+                )
+            } else {
+                let (coordinate, rest) = actions.split_at(2);
+                (
+                    Action {
+                        kind: crate::ActionKind::Place,
+                        position: Some(crate::Position {
+                            row: coordinate.as_bytes()[1] - b'1',
+                            col: coordinate.as_bytes()[0] - b'a',
+                        }),
+                    },
+                    rest,
+                )
+            };
+            actions = remaining;
+            master
+                .apply_decision_results(&[ReversiActionStatus {
+                    player_id: step.requests[0].player_id.clone(),
+                    action_status: ActionDecision::Accepted,
+                    failure_reason: None,
+                    action: Some(action),
+                }])
+                .unwrap();
+        }
+        assert!(actions.is_empty());
+        assert_eq!(master.state.consecutive_passes, 2);
+        assert_eq!(master.state.winner_by_forfeit, None);
+        let snapshot = master.current_snapshot();
+        let (resumed, resumed_init) = ReversiGameMaster::initialize_for(
+            "xot",
+            players(),
+            Some(snapshot.clone()),
+            ruleset,
+            || panic!("must not select another opening"),
+        )
+        .unwrap();
+        assert_eq!(resumed_init, initialized);
+        assert_eq!(resumed.state, master.state);
+        let replay = resumed.current_public_replay().unwrap();
+        assert_eq!(
+            replay.payload,
+            master.current_public_replay().unwrap().payload
+        );
+        assert!(
+            resumed
+                .public_replay_turns
+                .iter()
+                .any(|turn| turn.action.kind == crate::ActionKind::Pass)
+        );
+        assert!(
+            ReversiGameMaster::initialize_for(
+                "xot",
+                players(),
+                Some(snapshot),
+                Ruleset::XotLarge,
+                || panic!("must reject the mismatched ruleset")
+            )
+            .is_err()
+        );
     }
 }

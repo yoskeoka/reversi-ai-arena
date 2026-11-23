@@ -3,7 +3,10 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
-use crate::{Action, ActionKind, Position};
+use crate::{
+    Action, ActionKind, Position, PublicReplayTurn,
+    opening::{OpeningMoves, Ruleset, initial_state},
+};
 
 const RECORD_JSON: &str = "record.json";
 const HISTORY_JSON: &str = "history.json";
@@ -35,14 +38,71 @@ impl Transcript {
 
 pub fn load_artifact_transcript(input_dir: &Path) -> Result<Transcript, String> {
     let source = resolve_artifact_source(input_dir)?;
-    let events = match source.kind {
+    match source.kind {
         ArtifactSourceKind::Record => {
             let artifact: RecordArtifact = read_json(&source.path)?;
-            artifact.event_log
+            if let Some(ruleset) = xot_ruleset(artifact.game.as_ref()) {
+                return xot_transcript(ruleset, artifact.snapshot);
+            }
+            transcript_from_events(&artifact.event_log)
         }
-        ArtifactSourceKind::History => read_json(&source.path)?,
-    };
-    transcript_from_events(&events)
+        ArtifactSourceKind::History => {
+            let events: Vec<ArtifactEvent> = read_json(&source.path)?;
+            let game = events
+                .iter()
+                .find(|event| event.kind == "match_started")
+                .and_then(|event| event.payload.as_ref())
+                .and_then(|payload| payload.game.as_ref());
+            if let Some(ruleset) = xot_ruleset(game) {
+                let snapshot = read_json(&source.path.with_file_name("snapshot.json"))?;
+                return xot_transcript(ruleset, Some(snapshot));
+            }
+            transcript_from_events(&events)
+        }
+    }
+}
+
+fn xot_ruleset(game: Option<&ArtifactGame>) -> Option<Ruleset> {
+    game?
+        .ruleset_version
+        .as_deref()?
+        .parse::<Ruleset>()
+        .ok()
+        .filter(|ruleset| ruleset.is_xot())
+}
+
+fn xot_transcript(
+    ruleset: Ruleset,
+    snapshot: Option<ArtifactSnapshot>,
+) -> Result<Transcript, String> {
+    let snapshot = snapshot.ok_or("XOT artifact is missing its snapshot")?;
+    if snapshot.ruleset_version.as_deref() != Some(ruleset.id()) {
+        return Err("XOT artifact and snapshot rulesets disagree".into());
+    }
+    let game_state = snapshot
+        .game_state
+        .ok_or("XOT snapshot is missing its game state")?;
+    let opening = game_state
+        .opening_moves
+        .ok_or("XOT snapshot is missing its opening")?;
+    let mut state = initial_state(Some(&opening))?;
+    let mut entries: Vec<_> = opening.into_iter().map(TranscriptEntry::Move).collect();
+    let turns = game_state
+        .public_replay_turns
+        .ok_or("XOT snapshot is missing its AI transcript")?;
+    for turn in turns {
+        if state.current_player != Some(turn.color) {
+            return Err("XOT snapshot transcript has an out-of-turn action".into());
+        }
+        state.apply_valid_action(&turn.action)?;
+        entries.push(match turn.action.kind {
+            ActionKind::Pass => TranscriptEntry::Pass,
+            ActionKind::Place => {
+                TranscriptEntry::Move(turn.action.position.ok_or("missing placement")?)
+            }
+        });
+    }
+    Ok(Transcript { entries })
 }
 
 #[derive(Debug, Clone)]
@@ -207,6 +267,25 @@ where
 #[derive(Debug, Deserialize)]
 struct RecordArtifact {
     event_log: Vec<ArtifactEvent>,
+    game: Option<ArtifactGame>,
+    snapshot: Option<ArtifactSnapshot>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ArtifactGame {
+    ruleset_version: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ArtifactSnapshot {
+    ruleset_version: Option<String>,
+    game_state: Option<ArtifactOpening>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ArtifactOpening {
+    opening_moves: Option<OpeningMoves>,
+    public_replay_turns: Option<Vec<PublicReplayTurn>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -221,6 +300,7 @@ struct ArtifactEvent {
 struct TurnResultPayload {
     action_status: Option<String>,
     action: Option<Action>,
+    game: Option<ArtifactGame>,
 }
 
 #[cfg(test)]

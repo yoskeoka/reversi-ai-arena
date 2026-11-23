@@ -16,9 +16,9 @@ The goal is to keep the local and CI entrypoint identical:
 
 - The pinned runner version for Phase 1 native-overlay verification is
   `github.com/yoskeoka/ai-arena/cmd/arena-runner@v0.2.0`.
-- Official bundle verification consumes commit
-  `bd2de02252e0e5925aa19402c1ee569588d05a10` of `yoskeoka/ai-arena`, which
-  provides the `--game-master-bundle` and `--player-bundle` runner inputs.
+- Official bundle verification consumes ai-arena v0.3.0 at commit
+  `212839f537274d8874a2e29afc2bb292cd842dd0`. This supports WASI startup
+  ruleset selection and exact bundle identity on snapshot resume.
 - Version changes must be explicit in this repository rather than inherited
   from a sibling workspace checkout.
 
@@ -30,8 +30,11 @@ WASI runner path. The native local-subprocess game-master manifest overlay is
 development-only and cannot satisfy release or staging acceptance.
 
 The bundle runner invocation uses the game ZIP once and the exact AI ZIP for
-two separately named players. Its standard `result-summary.json` and
-`exported-snapshot.json` must both report `completed`.
+two separately named players. A fresh run selects one of the three rulesets with `--ruleset`. Its
+`result-summary.json` and `exported-snapshot.json` must both report
+`completed`. Resume selects the ruleset recorded in the snapshot. The
+v0.3.0 CLI bundle wrapper omits the optional public replay RPC; verification
+of the published replay uses the v0.3.0 operator registration and worker path.
 
 ## Scope Limits
 

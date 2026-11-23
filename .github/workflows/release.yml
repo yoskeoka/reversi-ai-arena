@@ -6,7 +6,7 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
@@ -17,10 +17,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           repository: yoskeoka/ai-arena
-          ref: bd2de02252e0e5925aa19402c1ee569588d05a10
+          ref: 212839f537274d8874a2e29afc2bb292cd842dd0
           path: ai-arena
-      - run: AI_ARENA_DIR="$GITHUB_WORKSPACE/ai-arena" RELEASE_VERSION="$GITHUB_REF_NAME" make verify-release-artifacts
-      - env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_VERSION" dist/*.arena.zip dist/SHA256SUMS --title "$RELEASE_VERSION" --generate-notes
+      - run: tools/release-packager/fetch-xot.sh .tmp/xot
+      - run: XOT_OPENINGS_DIR="$PWD/.tmp/xot" AI_ARENA_DIR="$PWD/ai-arena" RELEASE_VERSION="$GITHUB_REF_NAME" make verify-release-artifacts

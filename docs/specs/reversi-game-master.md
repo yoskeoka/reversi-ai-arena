@@ -17,14 +17,15 @@ It fixes:
 ## Match Metadata
 
 - `game_id`: `reversi`
-- `game_version`: `1.1.0`
-- `ruleset_version`: `standard`
+- `game_version` is `1.2.0`.
+- `ruleset_version` is `standard`, `standard-xot-large`, or `standard-xot-small`.
 
-Phase 1 owns one stable ruleset only. Future opening-policy or runtime-policy
-variants may add new ruleset identifiers, but they must not change the core
-Reversi board rules.
+The selected competition ruleset is fixed for the match. Large is the default
+choice for XOT competitions. Omission at direct game-master startup selects
+standard. The v0.3.0 WASI runner supplies `AI_ARENA_RULESET_VERSION` before
+the metadata handshake. Empty or unknown identifiers fail startup.
 
-`game_version` is the source-controlled release identity. A public release
+`game_version` is the source-controlled release identity. A tagged release
 uses the exact `v${game_version}` Git tag, and the same value must appear in
 game-master runtime metadata and both released bundle manifests.
 
@@ -43,18 +44,24 @@ game-master runtime metadata and both released bundle manifests.
 
 ## Initial State
 
-Phase 1 starts from the standard 8x8 opening:
+Standard starts at turn 1 with the four center discs and Black to move.
+Both XOT rulesets select one row from the corresponding official list and
+apply all eight placements from the same center position. The first AI
+decision is Black at turn 9. Automatic placements have no AI calls, deadlines,
+or decision billing.
 
-- two black discs and two white discs in the center
-- Black moves first
-- `board_size = 8`
-- `ruleset = standard`
+A supplied runner `rng_seed` is a UTF-8 string. The game hashes the seed with
+SHA-256 and a big-endian counter starting at zero, using the first 64 bits and
+rejection sampling to choose a row uniformly without modulo bias. A fresh XOT
+match without a runner seed uses the WASI wall clock and match player identities
+to derive a seed. The runtime must supply the clock. Standard ignores the seed.
 
 The per-player init payload must identify:
 
 - which color the player controls
 - the board size
-- the opening placements
+- all occupied squares and their colors at the start of AI play
+- the first AI turn for XOT (`initial_turn: 9`), omitted for standard
 - the ruleset identifier
 
 ## Turn Model
@@ -124,6 +131,7 @@ At terminal state:
 The internal snapshot must preserve enough state to resume the match without
 recomputing from logs alone, including:
 
+- selected XOT opening sequence and ruleset, with no reselection on resume
 - current board
 - current player
 - current turn number
@@ -132,6 +140,10 @@ recomputing from logs alone, including:
 - accepted public replay turns, so a resumed completed match publishes a full
   transcript rather than only post-resume turns
 - terminal winner or failure state when already completed
+
+Historical standard snapshots without an opening sequence remain readable.
+Resuming requires the startup ruleset to agree with the stored ruleset (an
+absent legacy ruleset means standard).
 
 The exported snapshot must preserve only public replay-safe data:
 
@@ -145,13 +157,16 @@ The exported snapshot must preserve only public replay-safe data:
 
 For a completed match, the game master publishes `current_public_replay` with
 format `reversi/replay`, version `1`, and a JSON payload. The payload contains
-the fixed eight-square standard opening, `ruleset: "standard"`, and only the
-ordered accepted placements and accepted passes. It contains no private
+the four standard center placements as `opening`, the selected `ruleset`, and
+only the ordered accepted AI placements and passes in `turns`. XOT adds
+`opening_moves`, an array of exactly eight board coordinates played alternately
+from the center position. Its initial frame is the resulting turn 9 board.
+Standard omits `opening_moves`, preserving the historical format. It contains no private
 visible-state, runner history, stderr, or artifact locator.
 
 The consumer replays those entries from the declared opening and validates its
 terminal state against the separately published exported snapshot. An
-immediate-loss completion has an empty transcript and remains valid when the
+immediate loss before the first AI move has an empty AI transcript and remains valid when the
 exported state identifies a surviving winner. A non-completed match has no
 public replay.
 

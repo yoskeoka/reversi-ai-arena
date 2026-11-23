@@ -3,12 +3,13 @@
 pub mod engine;
 pub mod gamemaster;
 pub mod kifu;
+pub mod opening;
 
 use aiarena_protocol::{GameMetadata, gamemaster as gm, player};
 use serde::{Deserialize, Serialize};
 
 pub const GAME_ID: &str = "reversi";
-pub const GAME_VERSION: &str = "1.1.0";
+pub const GAME_VERSION: &str = "1.2.0";
 pub const RULESET_VERSION: &str = "standard";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,6 +51,8 @@ pub struct InitState {
     pub board_size: u8,
     pub opening: Vec<DiscPlacement>,
     pub ruleset: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub initial_turn: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -109,6 +112,8 @@ pub struct PublicReplayPayload {
     pub board_size: u8,
     pub opening: Vec<DiscPlacement>,
     pub ruleset: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opening_moves: Option<opening::OpeningMoves>,
     pub turns: Vec<PublicReplayTurn>,
 }
 
@@ -124,10 +129,14 @@ pub type ReversiPlayerGameOverParams = player::GameOverParams<VisibleState, Game
 pub use kifu::{Transcript, TranscriptEntry, load_artifact_transcript};
 
 pub fn game_metadata() -> GameMetadata {
+    game_metadata_for(opening::Ruleset::Standard)
+}
+
+pub fn game_metadata_for(ruleset: opening::Ruleset) -> GameMetadata {
     GameMetadata {
         game_id: GAME_ID.to_string(),
         game_version: GAME_VERSION.to_string(),
-        ruleset_version: RULESET_VERSION.to_string(),
+        ruleset_version: ruleset.id().to_string(),
     }
 }
 

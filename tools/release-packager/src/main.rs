@@ -1,4 +1,4 @@
-use reversi_game::{GAME_ID, GAME_VERSION, RULESET_VERSION};
+use reversi_game::{GAME_ID, GAME_VERSION, opening::Ruleset};
 use serde_json::{Value, json};
 
 fn game_manifest() -> Value {
@@ -7,11 +7,11 @@ fn game_manifest() -> Value {
         "artifact_kind": "game",
         "game_id": GAME_ID,
         "game_version": GAME_VERSION,
-        "rulesets": [{
-            "ruleset_version": RULESET_VERSION,
+        "rulesets": Ruleset::ALL.map(|ruleset| json!({
+            "ruleset_version": ruleset.id(),
             "player_count": 2,
             "max_active_bots_per_owner": 3
-        }],
+        })),
         "runtime": { "kind": "wasm-wasi", "module": "reversi-gamemaster.wasm" }
     })
 }
@@ -44,7 +44,7 @@ fn ai_manifest() -> Value {
     object.insert("artifact_kind".to_string(), json!("ai"));
     object.insert(
         "rulesets".to_string(),
-        json!([{ "ruleset_version": RULESET_VERSION }]),
+        json!(Ruleset::ALL.map(|ruleset| json!({ "ruleset_version": ruleset.id() }))),
     );
     object
         .get_mut("runtime")
@@ -81,15 +81,13 @@ mod tests {
     fn game_manifest_matches_reversi_policy() {
         assert_eq!(game_manifest()["game_id"], GAME_ID);
         assert_eq!(game_manifest()["game_version"], GAME_VERSION);
-        assert_eq!(
-            game_manifest()["rulesets"][0]["ruleset_version"],
-            RULESET_VERSION
-        );
-        assert_eq!(game_manifest()["rulesets"][0]["player_count"], 2);
-        assert_eq!(
-            game_manifest()["rulesets"][0]["max_active_bots_per_owner"],
-            3
-        );
+        let manifest = game_manifest();
+        assert_eq!(manifest["rulesets"].as_array().unwrap().len(), 3);
+        for (index, ruleset) in Ruleset::ALL.into_iter().enumerate() {
+            assert_eq!(manifest["rulesets"][index]["ruleset_version"], ruleset.id());
+            assert_eq!(manifest["rulesets"][index]["player_count"], 2);
+            assert_eq!(manifest["rulesets"][index]["max_active_bots_per_owner"], 3);
+        }
     }
 
     #[test]
@@ -108,5 +106,8 @@ mod tests {
         );
         assert_eq!(manifest["schema_version"], "arena-bundle/v1");
         assert_eq!(manifest["artifact_kind"], "ai");
+        for (index, ruleset) in Ruleset::ALL.into_iter().enumerate() {
+            assert_eq!(manifest["rulesets"][index]["ruleset_version"], ruleset.id());
+        }
     }
 }
