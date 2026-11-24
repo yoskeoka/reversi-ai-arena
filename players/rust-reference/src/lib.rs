@@ -508,6 +508,7 @@ mod tests {
                     board_size: 8,
                     opening: Vec::new(),
                     ruleset: RULESET_VERSION.to_string(),
+                    initial_turn: None,
                 },
             },
         )

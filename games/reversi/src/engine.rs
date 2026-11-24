@@ -47,24 +47,25 @@ impl MatchState {
     }
 
     pub fn opening() -> Vec<DiscPlacement> {
-        vec![
-            DiscPlacement {
-                position: Position { row: 3, col: 3 },
-                disc: Disc::White,
-            },
-            DiscPlacement {
-                position: Position { row: 3, col: 4 },
-                disc: Disc::Black,
-            },
-            DiscPlacement {
-                position: Position { row: 4, col: 3 },
-                disc: Disc::Black,
-            },
-            DiscPlacement {
-                position: Position { row: 4, col: 4 },
-                disc: Disc::White,
-            },
-        ]
+        Self::new_standard().placements()
+    }
+
+    pub fn placements(&self) -> Vec<DiscPlacement> {
+        let mut placements = Vec::new();
+        for (row, discs) in self.board.iter().enumerate() {
+            for (col, &disc) in discs.iter().enumerate() {
+                if disc != Disc::Empty {
+                    placements.push(DiscPlacement {
+                        position: Position {
+                            row: row as u8,
+                            col: col as u8,
+                        },
+                        disc,
+                    });
+                }
+            }
+        }
+        placements
     }
 
     pub fn legal_actions_for(&self, color: PlayerColor) -> Vec<Position> {

@@ -50,7 +50,7 @@ not a program that `ai-arena` hosts or executes.
   timestamps are unsupported because the public API's timestamp source does
   not generate them. The public spectator contract preserves submitted
   game-player order: entry zero is Black and entry one is White for standard
-  Reversi. Each entry has a non-empty `display_name` and `ai_submission_id`.
+  Reversi and both XOT rulesets. Each entry has a non-empty `display_name` and `ai_submission_id`.
   Detail and state resources must contain equal completion timestamps and
   participant field values in that sequence; JSON object-property order does
   not affect that comparison. Missing, malformed, or differently shaped
@@ -74,8 +74,11 @@ not a program that `ai-arena` hosts or executes.
 - Terminal replay accepts `format: "reversi/replay"` and `version: "1"` only.
   Its Reversi-owned payload supplies `board_size`, `opening`, `ruleset`, and
   accepted placement/pass transcript entries. Its ruleset must exactly match
-  the selected/list ruleset; its opening must be structurally valid for that
-  ruleset. The final exported state is
+  the selected/list ruleset. All three rulesets carry the four standard center discs in
+  `opening`. Each XOT replay also carries exactly eight legal placements
+  in `opening_moves`. The viewer applies them from the center opening before
+  rendering the first frame at turn 9. Standard replays start at turn 1 and
+  omit `opening_moves`. The final exported state is
   separately fetched from the public state resource and must agree with the
   replayed board, score, turn/player state, and terminal status.
 - Unknown initial-position parameters, incompatible format/version, malformed

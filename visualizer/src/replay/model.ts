@@ -5,11 +5,12 @@ export type ReplayPayload = {
   board_size: number;
   opening: { position: { row: number; col: number }; disc: Disc }[];
   ruleset: string;
+  opening_moves?: { row: number; col: number }[];
   turns: { player_id: string; color: Color; action: Action }[];
 };
 export type ExportedState = {
   status: "completed";
-  public_state: { board: Disc[][]; current_player: Color | null; scores: { black: number; white: number }; completed: boolean };
+  public_state: { turn?: number; board: Disc[][]; current_player: Color | null; scores: { black: number; white: number }; completed: boolean };
 };
 export type ReplayFrame = { board: Disc[][]; currentPlayer: Color | null; scores: { black: number; white: number }; turn: number; lastAction?: Action };
 export type ReplayModel = { frames: readonly ReplayFrame[]; turns: ReadonlyArray<ReplayPayload["turns"][number]>; final: ReplayFrame };
@@ -18,13 +19,31 @@ const directions = [-1, 0, 1].flatMap((row) => [-1, 0, 1].map((col) => [row, col
 const other = (color: Color): Color => color === "black" ? "white" : "black";
 const clone = (board: Disc[][]) => board.map((row) => [...row]);
 const standardOpening = [{ position: { row: 3, col: 3 }, disc: "white" }, { position: { row: 3, col: 4 }, disc: "black" }, { position: { row: 4, col: 3 }, disc: "black" }, { position: { row: 4, col: 4 }, disc: "white" }] as const;
+const isXot = (ruleset: string): boolean => ruleset === "standard-xot-large" || ruleset === "standard-xot-small";
+
 export function decodeReplay(value: unknown, expectedRuleset: string): ReplayPayload {
   if (!isRecord(value)) throw new Error("public replay payload must be an object");
   const payload = value as Partial<ReplayPayload>;
   if (payload.board_size !== 8 || payload.ruleset !== expectedRuleset || !Array.isArray(payload.opening) || !Array.isArray(payload.turns)) {
     throw new Error("unsupported Reversi replay initial-position parameters");
   }
-  if (expectedRuleset === "standard" && (payload.opening.length !== standardOpening.length || !payload.opening.every((placement, index) => placement?.disc === standardOpening[index].disc && placement.position?.row === standardOpening[index].position.row && placement.position?.col === standardOpening[index].position.col))) throw new Error("unsupported Reversi replay opening");
+  const xot = isXot(expectedRuleset);
+  if (xot || expectedRuleset === "standard") {
+    if (payload.opening.length !== standardOpening.length || !payload.opening.every((placement, index) =>
+      placement?.disc === standardOpening[index].disc &&
+      placement.position?.row === standardOpening[index].position.row &&
+      placement.position?.col === standardOpening[index].position.col)) {
+      throw new Error("unsupported Reversi replay opening");
+    }
+  }
+  if (xot) {
+    if (!Array.isArray(payload.opening_moves) || payload.opening_moves.length !== 8 ||
+        !payload.opening_moves.every((position) => position && inBounds(position.row, position.col))) {
+      throw new Error("XOT replay requires eight opening moves");
+    }
+  } else if ("opening_moves" in payload) {
+    throw new Error("opening moves are unsupported for this Reversi ruleset");
+  }
   return payload as ReplayPayload;
 }
 
@@ -34,7 +53,7 @@ export function buildReplay(payloadValue: unknown, exportedValue: unknown, expec
   if (!isRecord(exported) || exported.status !== "completed" || !isRecord(exported.public_state) || exported.public_state.completed !== true) {
     throw new Error("a completed final exported state is required");
   }
-  const board = Array.from({ length: payload.board_size }, () => Array<Disc>(payload.board_size).fill("empty"));
+  let board = Array.from({ length: payload.board_size }, () => Array<Disc>(payload.board_size).fill("empty"));
   const occupied = new Set<string>();
   for (const placement of payload.opening) {
     if (!placement?.position || !inBounds(placement.position.row, placement.position.col) || !isDisc(placement.disc) || placement.disc === "empty") throw new Error("malformed opening");
@@ -44,18 +63,29 @@ export function buildReplay(payloadValue: unknown, exportedValue: unknown, expec
     board[placement.position.row][placement.position.col] = placement.disc;
   }
   if (!occupied.size || !payload.opening.some((placement) => placement.disc === "black") || !payload.opening.some((placement) => placement.disc === "white")) throw new Error("malformed opening");
-  let current: Color | null = "black";
-  const frames: ReplayFrame[] = [frame(board, current, 1)];
-  for (const turn of payload.turns) {
-    if (!turn || turn.color !== current || !turn.player_id || !turn.action || !isAction(turn.action)) throw new Error("malformed or out-of-turn public replay entry");
-    const next = apply(board, turn.color, turn.action);
-    board.splice(0, board.length, ...next);
-    current = other(turn.color);
-    frames.push(frame(board, current, frames.length + 1, turn.action));
+  let current: Color = "black";
+  for (const position of payload.opening_moves ?? []) {
+    board = apply(board, current, { kind: "place", position });
+    current = other(current);
   }
-  const final = frame(board, null, frames.at(-1)?.turn ?? 1, frames.at(-1)?.lastAction);
+  let number = (payload.opening_moves?.length ?? 0) + 1;
+  let passes = 0;
+  const frames: ReplayFrame[] = [frame(board, current, number)];
+  for (const turn of payload.turns) {
+    if (passes === 2 || board.every((row) => row.every((disc) => disc !== "empty"))) {
+      throw new Error("public replay contains a turn after the game ended");
+    }
+    if (!turn || turn.color !== current || !turn.player_id || !turn.action || !isAction(turn.action)) throw new Error("malformed or out-of-turn public replay entry");
+    board = apply(board, turn.color, turn.action);
+    current = other(turn.color);
+    passes = turn.action.kind === "pass" ? passes + 1 : 0;
+    number++;
+    frames.push(frame(board, current, number, turn.action));
+  }
+  const final = frame(board, null, number, frames.at(-1)?.lastAction);
   const publicState = exported.public_state;
-  if (!sameBoard(final.board, publicState.board) || final.scores.black !== publicState.scores.black || final.scores.white !== publicState.scores.white || publicState.current_player !== null) {
+  const matchesTurn = (publicState.turn === undefined && !isXot(payload.ruleset)) || final.turn === publicState.turn;
+  if (!matchesTurn || !sameBoard(final.board, publicState.board) || final.scores.black !== publicState.scores.black || final.scores.white !== publicState.scores.white || publicState.current_player !== null) {
     throw new Error("public replay conflicts with final exported state");
   }
   const selectable = Object.freeze([...frames.map(freezeFrame), freezeFrame(final)]);
@@ -86,4 +116,4 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
 function isDisc(value: unknown): value is Disc { return value === "empty" || value === "black" || value === "white"; }
 function isAction(value: unknown): value is Action { return isRecord(value) && (value.kind === "pass" || value.kind === "place"); }
 function inBounds(row: number, col: number) { return Number.isInteger(row) && Number.isInteger(col) && row >= 0 && row < 8 && col >= 0 && col < 8; }
-function sameBoard(left: Disc[][], right: unknown): boolean { return Array.isArray(right) && left.length === right.length && left.every((row, i) => Array.isArray(right[i]) && row.every((disc, j) => disc === right[i][j])); }
+function sameBoard(left: Disc[][], right: unknown): boolean { return Array.isArray(right) && left.length === right.length && left.every((row, i) => Array.isArray(right[i]) && right[i].length === row.length && row.every((disc, j) => disc === right[i][j])); }

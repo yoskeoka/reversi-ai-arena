@@ -1,3 +1,5 @@
+mod xot;
+
 use std::io::{self, BufReader};
 
 use aiarena_protocol::{
@@ -10,8 +12,9 @@ use aiarena_protocol::{
     },
 };
 use reversi_game::{
-    game_metadata,
+    game_metadata_for,
     gamemaster::{ReversiGameMaster, SnapshotState},
+    opening::Ruleset,
 };
 
 struct RequestOutcome {
@@ -27,6 +30,14 @@ fn main() {
 }
 
 fn run() -> Result<(), String> {
+    let ruleset = match std::env::var("AI_ARENA_RULESET_VERSION") {
+        Ok(id) => id.parse()?,
+        Err(std::env::VarError::NotPresent) => Ruleset::Standard,
+        Err(err) => return Err(format!("read AI_ARENA_RULESET_VERSION: {err}")),
+    };
+    if ruleset.is_xot() && !cfg!(feature = "xot") {
+        return Err("game master was built without XOT data".into());
+    }
     let stdin = io::stdin();
     let stdout = io::stdout();
     let mut decoder = Decoder::new(BufReader::new(stdin.lock()));
@@ -34,7 +45,7 @@ fn run() -> Result<(), String> {
     let mut game_master: Option<ReversiGameMaster> = None;
 
     while let Some(request) = decoder.decode_request().map_err(|err| err.to_string())? {
-        let outcome = handle_request(&mut game_master, request);
+        let outcome = handle_request(&mut game_master, ruleset, request);
         if let Some(response) = outcome.response {
             encoder.encode(&response).map_err(|err| err.to_string())?;
         }
@@ -45,12 +56,15 @@ fn run() -> Result<(), String> {
     Ok(())
 }
 
-fn handle_request(game_master: &mut Option<ReversiGameMaster>, request: Request) -> RequestOutcome {
+fn handle_request(
+    game_master: &mut Option<ReversiGameMaster>,
+    ruleset: Ruleset,
+    request: Request,
+) -> RequestOutcome {
     let request_id = request.id.clone();
     let result = match request.method.as_str() {
-        METHOD_METADATA => {
-            success_response(request_id.as_deref(), &game_metadata()).map_err(|err| err.to_string())
-        }
+        METHOD_METADATA => success_response(request_id.as_deref(), &game_metadata_for(ruleset))
+            .map_err(|err| err.to_string()),
         METHOD_INITIALIZE_MATCH => {
             let params = request
                 .parse_params::<gamemaster::InitializeMatchParams<
@@ -65,7 +79,18 @@ fn handle_request(game_master: &mut Option<ReversiGameMaster>, request: Request)
                         Some(snapshot) => (snapshot.match_id.clone(), Some(snapshot)),
                         None => ("reversi-match".to_string(), None),
                     };
-                    match ReversiGameMaster::initialize(match_id, params.players, resume_snapshot) {
+                    let player_ids: Vec<_> = params
+                        .players
+                        .iter()
+                        .map(|player| player.player_id.clone())
+                        .collect();
+                    match ReversiGameMaster::initialize_for(
+                        match_id,
+                        params.players,
+                        resume_snapshot,
+                        ruleset,
+                        || xot::opening(ruleset, params.rng_seed.as_deref(), &player_ids),
+                    ) {
                         Ok((master, init_state)) => {
                             *game_master = Some(master);
                             success_response(

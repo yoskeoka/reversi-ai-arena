@@ -12,26 +12,27 @@ fi
 
 mkdir -p "${output_dir}"
 output_dir="$(cd "${output_dir}" && pwd)"
-stage="$(mktemp -d)"
+stage="$(mktemp -d "${output_dir}/.package.XXXXXX")"
 trap 'rm -rf "${stage}"' EXIT
 
+bundle_target_dir="${repo_root}/target/release-bundle"
 export CARGO_HOME="${CARGO_HOME:-/tmp/reversi-ai-arena-cargo-home}"
-cargo build --release --target wasm32-wasip1 -p reversi-gamemaster --bin reversi-gamemaster
-cargo build --release --target wasm32-wasip1 -p reversi-rust-reference-player --bin reversi-rust-reference-player
+cargo build --locked --target-dir "${bundle_target_dir}" --release --target wasm32-wasip1 -p reversi-gamemaster --features xot --bin reversi-gamemaster
+cargo build --locked --target-dir "${bundle_target_dir}" --release --target wasm32-wasip1 -p reversi-rust-reference-player --bin reversi-rust-reference-player
 
 package_bundle() {
     local artifact_name="$1"
     local manifest_source="$2"
     local module_source="$3"
     local module_name="$4"
-    local bundle_dir="${stage}/${artifact_name}"
+    local bundle_dir="${stage}/${module_name%.wasm}"
     mkdir -p "${bundle_dir}"
     cp "${manifest_source}" "${bundle_dir}/manifest.json"
     cp "${module_source}" "${bundle_dir}/${module_name}"
     touch -t 198001010000 "${bundle_dir}/manifest.json" "${bundle_dir}/${module_name}"
     (
         cd "${bundle_dir}"
-        TZ=UTC zip -X -q -0 -FS "${output_dir}/${artifact_name}" manifest.json "${module_name}"
+        TZ=UTC zip -X -q -0 "${stage}/${artifact_name}" manifest.json "${module_name}"
     )
 }
 
@@ -45,15 +46,18 @@ cargo run --quiet -p reversi-release-packager -- ai-manifest > "${ai_manifest}"
 package_bundle \
     "reversi-game-${release_version}.arena.zip" \
     "${game_manifest}" \
-    "${repo_root}/target/wasm32-wasip1/release/reversi-gamemaster.wasm" \
+    "${bundle_target_dir}/wasm32-wasip1/release/reversi-gamemaster.wasm" \
     reversi-gamemaster.wasm
 package_bundle \
     "reversi-rust-reference-ai-${release_version}.arena.zip" \
     "${ai_manifest}" \
-    "${repo_root}/target/wasm32-wasip1/release/reversi-rust-reference-player.wasm" \
+    "${bundle_target_dir}/wasm32-wasip1/release/reversi-rust-reference-player.wasm" \
     rust-reference-ai.wasm
 
 (
-    cd "${output_dir}"
+    cd "${stage}"
     sha256sum "reversi-game-${release_version}.arena.zip" "reversi-rust-reference-ai-${release_version}.arena.zip" > SHA256SUMS
 )
+mv "${stage}/reversi-game-${release_version}.arena.zip" \
+   "${stage}/reversi-rust-reference-ai-${release_version}.arena.zip" \
+   "${stage}/SHA256SUMS" "${output_dir}/"

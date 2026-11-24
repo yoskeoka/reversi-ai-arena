@@ -6,7 +6,7 @@ visualizer, fixtures, and public examples that integrate with `ai-arena`.
 Current verification entrypoints:
 
 - `make verify-rust`
-- `AI_ARENA_DIR=/path/to/ai-arena make verify-release-artifacts`
+- `make verify-release-artifacts` with the pinned runner
 - `make verify-workflows`
 
 ## Run The Public Replay Visualizer
@@ -26,7 +26,7 @@ For development connections to local, staging, or production `ai-arena`, see
 [`DEVELOPMENT.md`](DEVELOPMENT.md). See
 [`visualizer/README.md`](visualizer/README.md) for visualizer-specific notes.
 
-## Build And Validate Official Artifacts
+## Build and validate the game bundles
 
 The official Reversi game master and reference AI are separate WASM/WASI
 `arena-bundle/v1` ZIPs. Build deterministic development artifacts and validate
@@ -36,15 +36,14 @@ the exact bytes with the pinned upstream contract:
 AI_ARENA_DIR=/path/to/ai-arena make verify-release-artifacts
 ```
 
-This command requires `jq` to check the runner artifacts.
+Use `jq` and an ai-arena v0.3.0 checkout at `212839f537274d8874a2e29afc2bb292cd842dd0`.
+The command builds `dist/reversi-game-dev.arena.zip`,
+`dist/reversi-rust-reference-ai-dev.arena.zip`, and `dist/SHA256SUMS`.
+It tests both ZIPs through the WASI runner and registration services.
 
-`AI_ARENA_DIR` must point at commit
-`bd2de02252e0e5925aa19402c1ee569588d05a10`. This creates `dist/` with
-`reversi-game-dev.arena.zip`, `reversi-rust-reference-ai-dev.arena.zip`, and
-`SHA256SUMS`, validates them, and completes a two-AI match by supplying those
-exact ZIPs to the upstream bundle runner. The exact source-aligned GitHub tag
-runs the same verification and uploads those byte-identical assets; see the
-[release version policy](docs/specs/submittable-artifacts.md).
+Register the same game bundle for `standard`, `standard-xot-large` (the
+default XOT choice), or `standard-xot-small`. The XOT reference covers the tracked
+source data, retrieval steps, and checksums. [XOT reference](docs/references/xot.md)
 
 ## Run A Native Development Match Through `arena-runner`
 
@@ -72,7 +71,7 @@ does not replace bundle validation or staging with the official WASM artifacts.
      '{' \
      '  "metadata": {' \
      '    "game_id": "reversi",' \
-     '    "game_version": "1.1.0",' \
+     '    "game_version": "1.2.0",' \
      '    "ruleset_version": "standard"' \
      '  },' \
      '  "runtime": {' \
@@ -100,7 +99,7 @@ does not replace bundle validation or staging with the official WASM artifacts.
      "protocol": {
        "transport": "stdio-jsonrpc-ndjson",
        "game_id": "reversi",
-       "game_version": "1.1.0",
+       "game_version": "1.2.0",
        "ruleset_version": "standard"
      },
      "runtime": {

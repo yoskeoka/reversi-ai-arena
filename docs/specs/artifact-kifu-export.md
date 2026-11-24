@@ -38,10 +38,17 @@ Reversi turns.
 
 The lossless transcript:
 
+- prefixes the eight automatic XOT placements from the persisted opening
+  before the complete accepted AI transcript, including turns before resume
 - preserves accepted placement turns
 - preserves explicit accepted `pass` turns
 - ignores non-turn events such as `turn_requested`
 - ignores non-accepted action outcomes such as timeout or protocol errors
+
+An XOT record uses its embedded snapshot. The history-only path reads the
+sibling `snapshot.json`. An XOT artifact fails if its snapshot lacks the
+opening and accepted AI transcript or disagrees with the declared ruleset.
+Standard and historical artifacts keep their existing behavior.
 
 Compact move text uses the same coordinate tokens as the repository's scripted
 fixtures:
