@@ -9,7 +9,7 @@ validator and bundle runner. Reversi pins ai-arena v0.3.0 at
 
 ## Release Assets
 
-An operator-built release uses the source-controlled Reversi game version
+A tagged release uses the source-controlled Reversi game version
 `X.Y.Z` and the exact Git tag `vX.Y.Z`. It produces exactly these files:
 
 - `reversi-game-vX.Y.Z.arena.zip`
@@ -62,12 +62,10 @@ rulesets. The platform selects the registered ruleset at WASI startup. It
 runs the matches concurrently and persists each public replay. The exact
 game version maps to one game digest.
 
-Version `v1.2.0` uses the operator preparation procedure in the
-[XOT reference](../references/xot.md). Preparation validates the official input
-bytes, row counts, unique coordinate sequences, and legality in the Reversi
-engine before compiling both lists into the WASM artifact. Missing or modified
-input fails the build. The built bundle runs offline.
+Version `v1.2.0` bundles the tracked XOT originals. Builds verify file hashes,
+row counts, uniqueness, and legality in the Reversi engine before embedding
+both lists in the WASM. Missing or modified input fails the build. The build
+and match paths use the repository bytes. [XOT sources and retrieval](../references/xot.md)
 
-The source pages provide no explicit redistribution terms. Tagged CI builds
-and verifies the bundles. Operators build the bundle from source for their
-own deployment.
+The tag workflow verifies the exact bundle bytes before publishing the ZIPs
+and `SHA256SUMS` to the GitHub Release.

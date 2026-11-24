@@ -6,7 +6,7 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   release:
@@ -19,5 +19,8 @@ jobs:
           repository: yoskeoka/ai-arena
           ref: 212839f537274d8874a2e29afc2bb292cd842dd0
           path: ai-arena
-      - run: tools/release-packager/fetch-xot.sh .tmp/xot
-      - run: XOT_OPENINGS_DIR="$PWD/.tmp/xot" AI_ARENA_DIR="$PWD/ai-arena" RELEASE_VERSION="$GITHUB_REF_NAME" make verify-release-artifacts
+      - run: AI_ARENA_DIR="$GITHUB_WORKSPACE/ai-arena" RELEASE_VERSION="$GITHUB_REF_NAME" make verify-release-artifacts
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_VERSION" dist/*.arena.zip dist/SHA256SUMS --title "$RELEASE_VERSION" --generate-notes

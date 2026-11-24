@@ -4,7 +4,6 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 release_version="${1:?usage: package.sh <release-version> [output-dir]}"
 output_dir="${2:-${repo_root}/dist}"
-: "${XOT_OPENINGS_DIR:?set XOT_OPENINGS_DIR to the absolute path of the official XOT input directory}"
 epoch="${SOURCE_DATE_EPOCH:-315532800}" # 1980-01-01, the ZIP epoch
 if [[ "${epoch}" != "315532800" ]]; then
     echo "SOURCE_DATE_EPOCH must be 315532800 for reproducible ZIP timestamps" >&2
@@ -13,7 +12,7 @@ fi
 
 mkdir -p "${output_dir}"
 output_dir="$(cd "${output_dir}" && pwd)"
-stage="$(mktemp -d)"
+stage="$(mktemp -d "${output_dir}/.package.XXXXXX")"
 trap 'rm -rf "${stage}"' EXIT
 
 bundle_target_dir="${repo_root}/target/release-bundle"
@@ -26,14 +25,14 @@ package_bundle() {
     local manifest_source="$2"
     local module_source="$3"
     local module_name="$4"
-    local bundle_dir="${stage}/${artifact_name}"
+    local bundle_dir="${stage}/${module_name%.wasm}"
     mkdir -p "${bundle_dir}"
     cp "${manifest_source}" "${bundle_dir}/manifest.json"
     cp "${module_source}" "${bundle_dir}/${module_name}"
     touch -t 198001010000 "${bundle_dir}/manifest.json" "${bundle_dir}/${module_name}"
     (
         cd "${bundle_dir}"
-        TZ=UTC zip -X -q -0 -FS "${output_dir}/${artifact_name}" manifest.json "${module_name}"
+        TZ=UTC zip -X -q -0 "${stage}/${artifact_name}" manifest.json "${module_name}"
     )
 }
 
@@ -56,6 +55,9 @@ package_bundle \
     rust-reference-ai.wasm
 
 (
-    cd "${output_dir}"
+    cd "${stage}"
     sha256sum "reversi-game-${release_version}.arena.zip" "reversi-rust-reference-ai-${release_version}.arena.zip" > SHA256SUMS
 )
+mv "${stage}/reversi-game-${release_version}.arena.zip" \
+   "${stage}/reversi-rust-reference-ai-${release_version}.arena.zip" \
+   "${stage}/SHA256SUMS" "${output_dir}/"

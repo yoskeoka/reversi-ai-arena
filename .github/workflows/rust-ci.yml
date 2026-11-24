@@ -88,8 +88,11 @@ jobs:
           repository: yoskeoka/ai-arena
           ref: 212839f537274d8874a2e29afc2bb292cd842dd0
           path: ai-arena
-      - run: tools/release-packager/fetch-xot.sh .tmp/xot
-      - run: XOT_OPENINGS_DIR="$PWD/.tmp/xot" AI_ARENA_DIR="$PWD/ai-arena" make verify-release-artifacts
+      - run: AI_ARENA_DIR="$GITHUB_WORKSPACE/ai-arena" make verify-release-artifacts
+      - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: reversi-release-artifacts
+          path: dist/
 
   game-verify:
     runs-on: ubuntu-latest

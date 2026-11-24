@@ -6,7 +6,7 @@ visualizer, fixtures, and public examples that integrate with `ai-arena`.
 Current verification entrypoints:
 
 - `make verify-rust`
-- `make verify-release-artifacts` with the pinned runner and prepared XOT inputs
+- `make verify-release-artifacts` with the pinned runner
 - `make verify-workflows`
 
 ## Run The Public Replay Visualizer
@@ -33,8 +33,7 @@ The official Reversi game master and reference AI are separate WASM/WASI
 the exact bytes with the pinned upstream contract:
 
 ```sh
-tools/release-packager/fetch-xot.sh .tmp/xot
-XOT_OPENINGS_DIR="$PWD/.tmp/xot" AI_ARENA_DIR=/path/to/ai-arena make verify-release-artifacts
+AI_ARENA_DIR=/path/to/ai-arena make verify-release-artifacts
 ```
 
 Use `jq` and an ai-arena v0.3.0 checkout at `212839f537274d8874a2e29afc2bb292cd842dd0`.
@@ -43,8 +42,8 @@ The command builds `dist/reversi-game-dev.arena.zip`,
 It tests both ZIPs through the WASI runner and registration services.
 
 Register the same game bundle for `standard`, `standard-xot-large` (the
-default XOT choice), or `standard-xot-small`. The XOT reference covers the
-source data and the build steps for a release tag. [XOT reference](docs/references/xot.md)
+default XOT choice), or `standard-xot-small`. The XOT reference covers the tracked
+source data, retrieval steps, and checksums. [XOT reference](docs/references/xot.md)
 
 ## Run A Native Development Match Through `arena-runner`
 

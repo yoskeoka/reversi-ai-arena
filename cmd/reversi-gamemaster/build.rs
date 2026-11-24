@@ -4,15 +4,7 @@ fn main() {
     if env::var_os("CARGO_FEATURE_XOT").is_none() {
         return;
     }
-    println!("cargo:rerun-if-env-changed=XOT_OPENINGS_DIR");
-    let source = PathBuf::from(
-        env::var_os("XOT_OPENINGS_DIR")
-            .expect("set XOT_OPENINGS_DIR to the verified XOT downloads directory"),
-    );
-    assert!(
-        source.is_absolute(),
-        "XOT_OPENINGS_DIR must be an absolute path"
-    );
+    let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../games/reversi/data/xot");
     let output = PathBuf::from(env::var_os("OUT_DIR").expect("Cargo build output"));
 
     for (name, rows, digest) in [
