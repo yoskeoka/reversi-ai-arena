@@ -5,7 +5,7 @@ export CARGO_HOME="${CARGO_HOME:-/tmp/reversi-ai-arena-cargo-home}"
 mkdir -p "${CARGO_HOME}"
 
 usage() {
-    echo "Usage: $0 {fmt|clippy|test|wasm|e2e|verify}" >&2
+    echo "Usage: $0 {fmt|clippy|clippy-local|test|wasm|e2e|verify}" >&2
     exit 1
 }
 
@@ -17,6 +17,36 @@ case "$cmd" in
         ;;
     clippy)
         cargo clippy --workspace --all-targets -- -D warnings
+        ;;
+    clippy-local)
+        # Read all lines and treat spaces, tabs, and newlines as delimiters.
+        IFS=$' \t\n' read -r -d '' -a packages <<< "${CLIPPY_PACKAGES:-}" || true
+        if [[ -z "${packages[0]:-}" ]]; then
+            echo "Set CLIPPY_PACKAGES to one or more exact workspace package names." >&2
+            exit 1
+        fi
+
+        args=(clippy)
+        for package in "${packages[@]}"; do
+            # Match the [package].name of each member in the root Cargo.toml.
+            case "$package" in
+                reversi-kifu-export|reversi-gamemaster|reversi-runner-e2e|reversi-game|\
+                aiarena-protocol|reversi-fixture-bots|reversi-rust-reference-player|reversi-release-packager)
+                    args+=(-p "$package")
+                    ;;
+                *)
+                    printf 'Unknown workspace package: %s\n' "$package" >&2
+                    exit 1
+                    ;;
+            esac
+        done
+        if [[ "${CLIPPY_ALL_TARGETS:-}" == 1 ]]; then
+            args+=(--all-targets)
+        fi
+        if [[ -n "${CLIPPY_TARGET:-}" ]]; then
+            args+=(--target "$CLIPPY_TARGET")
+        fi
+        "${CARGO:-cargo}" "${args[@]}" -- --no-deps -D warnings
         ;;
     test)
         cargo test --workspace

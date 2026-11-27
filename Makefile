@@ -1,12 +1,16 @@
 SHELL := /bin/bash
 
-.PHONY: rust-fmt rust-clippy rust-test wasm-check runner-e2e verify-rust build-release-artifacts verify-release-artifacts verify-release-version verify-workflows
+.PHONY: rust-fmt rust-clippy rust-clippy-local rust-test wasm-check runner-e2e verify-rust build-release-artifacts verify-release-artifacts verify-release-version verify-workflows
 
 rust-fmt:
 	./tools/rust-ci.sh fmt
 
 rust-clippy:
 	./tools/rust-ci.sh clippy
+
+rust-clippy-local: export CARGO_BUILD_JOBS ?= 2
+rust-clippy-local:
+	./tools/rust-ci.sh clippy-local
 
 rust-test:
 	./tools/rust-ci.sh test

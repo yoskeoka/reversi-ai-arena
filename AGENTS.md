@@ -22,6 +22,8 @@ This repository follows the AI-Centered Development workflow.
      `ww create --repo <repo> <type>/<description>` from the workspace root.
    - Never reuse an existing feature branch.
    - Run all lint and test checks that apply before creating a PR.
+   - Use [Quality Gates](docs/specs/quality-gates.md) to select local Rust
+     checks and record their coverage.
    - Route PR preparation and bounded post-PR follow-up through `review-task`.
 
 3. **Context Management**:

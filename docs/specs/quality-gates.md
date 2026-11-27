@@ -12,13 +12,15 @@ same contract.
 Run these commands from the repository root:
 
 - `make rust-fmt`: check Rust formatting across the workspace
+- Run Clippy with warnings denied for selected packages using
+  `make rust-clippy-local CLIPPY_PACKAGES="reversi-game aiarena-protocol"`.
 - `make rust-clippy`: run Clippy for all workspace targets with warnings denied
 - `make rust-test`: run the workspace Rust test suite
-- `make wasm-check`: build the Rust reference player for
+- `make wasm-check`: build the Rust game master and reference player for
   `wasm32-wasip1`
 - `make runner-e2e`: install the pinned tagged `arena-runner` and run the
   manifest-backed Reversi end-to-end verification path
-- `make verify-rust`: run the required Rust verification path for this phase
+- `make verify-rust`: run the full Rust CI gate locally
 - `make verify-workflows`: run repository-local workflow lint checks
 
 ## Workflow Artifact Retention
@@ -40,27 +42,45 @@ Workflow checks expose only active work in the checkout:
 
 ## Minimum Pre-PR Verification
 
-- PRs that touch `games/reversi/**`, `players/rust-reference/**`, `cmd/**`,
-  `Makefile`, `tools/rust-ci.sh`, root Rust-toolchain files, or the Rust CI
-  workflow must run `make verify-rust`.
+- Run scoped Clippy for changes to Rust sources, manifests, build scripts, or
+  inputs consumed by Rust. Include every crate affected by a shared input.
+  If a shared dependency or toolchain change has unknown reach, run
+  representative local checks and record the coverage left to CI. Skip local
+  Clippy for changes with no Rust impact.
+- Supply a whitespace-separated list of exact workspace package names in
+  `CLIPPY_PACKAGES`. The command rejects missing or invalid package names
+  before starting Cargo, and reports warnings from the selected packages with
+  `--no-deps -D warnings`.
+- Use the default library and binary targets for ordinary changes. Set
+  `CLIPPY_ALL_TARGETS=1` for changes affecting tests, examples, benchmarks, or
+  related conditional code. Set `CLIPPY_TARGET=wasm32-wasip1` for WASI code.
+  Use direct Cargo Clippy with `--features` for affected non-default features
+  and pass the relevant package and target flags.
+- Local Clippy defaults to two Cargo build jobs. Set `CARGO_BUILD_JOBS` in the
+  environment or on the Make command line to override it. Set `CARGO` to an
+  alternate executable when recording the invocation. The command reuses the
+  worktree build directory and the existing Cargo cache. Run Cargo commands
+  that share a build directory sequentially.
+- Run applicable formatting, Rust tests, WASM builds, and runner E2E checks.
+  The full gate is also available locally through `make verify-rust`. Record
+  the packages, targets, features, and results in the handoff.
 - PRs that change workflow files should also run `make verify-workflows`.
 - Go and browser verification stay targeted to later phases and are not part of
   the Phase 1/2 baseline unless those owning surfaces change.
 
 ## CI Contract
 
-- GitHub Actions must execute the same Rust verification entrypoints used
-  locally instead of inventing a separate CI-only command sequence.
-- Full Rust-surface changes run the complete `make verify-rust` path.
-- Surface-local Rust changes may run narrower crate checks, but the Rust
-  reference player lane must still include the WASM build check.
+- Changes to any tracked Rust workspace member, including the shared protocol
+  crate, trigger the Rust workflow on pull requests and pushes to `main` and
+  select `workspace-verify`.
+- `workspace-verify` runs `make verify-rust`, including formatting, all-target
+  workspace Clippy, workspace tests, both WASI builds, and runner E2E. It also
+  verifies the release artifacts against the pinned AI Arena checkout.
 - The tagged-runner Reversi E2E path must use the same pinned external runner
   version in local verification and CI.
 
 ## WASM Readiness
 
 - `wasm32-wasip1` is part of the repository toolchain contract.
-- The Rust reference player must stay buildable for that target as a runnable
-  `wasm-wasi` program.
-- A failing WASM build is a verification failure for the player surface, not an
-  optional follow-up task.
+- The Rust game master and reference player must stay buildable for that
+  target as runnable `wasm-wasi` programs.
