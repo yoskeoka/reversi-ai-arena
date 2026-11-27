@@ -5,9 +5,24 @@ visualizer, fixtures, and public examples that integrate with `ai-arena`.
 
 Current verification entrypoints:
 
-- `make verify-rust`
+- `make rust-clippy-local CLIPPY_PACKAGES="reversi-game aiarena-protocol"`
+- `make rust-clippy-local CLIPPY_PACKAGES=reversi-rust-reference-player CLIPPY_TARGET=wasm32-wasip1`
+- `make verify-rust` runs the full Rust CI gate locally.
 - `make verify-release-artifacts` with the pinned runner
 - `make verify-workflows`
+
+Set `CLIPPY_ALL_TARGETS=1` for changes affecting tests, examples, or benchmarks.
+Scoped Clippy defaults to two build jobs. Set `CARGO_BUILD_JOBS` to override
+the default.
+
+Use Cargo directly with `--features` to check a non-default feature. This
+command checks the game master's XOT feature for WASI.
+
+```sh
+cargo clippy -p reversi-gamemaster --target wasm32-wasip1 --features xot -- --no-deps -D warnings
+```
+
+Record your local check results as described in [Quality Gates](docs/specs/quality-gates.md).
 
 ## Run The Public Replay Visualizer
 

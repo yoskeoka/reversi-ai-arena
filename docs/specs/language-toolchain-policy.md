@@ -27,27 +27,26 @@
 
 ## Verification Expectations
 
-- Rust changes should be verifiable from the repository root through
-  repository-local commands that wrap Cargo-based checks.
-- The Rust baseline for this phase is:
-  - formatting check across the workspace
-  - Clippy with warnings denied across workspace targets
-  - workspace Rust tests
-  - WASM build verification for `players/rust-reference`
+- Run local Clippy from the repository root for changes to Rust sources,
+  manifests, build scripts, and consumed inputs. Select all affected crates.
+  If shared dependency or toolchain changes cannot be scoped, verify a
+  representative set locally and record the remaining CI coverage. Changes
+  with no Rust impact can skip Clippy.
+- Check library and binary targets for ordinary changes, all Cargo targets for
+  changes to tests, examples, benchmarks, or related conditional code, and
+  `wasm32-wasip1` for WASI code. Explicitly select affected non-default
+  features. Run applicable formatting, tests, WASM builds, and runner E2E.
 - Go verification may use targeted `go test` commands only for the directories
   that actually contain Go support code.
 - Visualizer verification may use targeted `npm` scripts inside `visualizer/`
   once dependencies and implementation are introduced.
-- GitHub Actions should keep CI scoped to the owning surface:
-  - `visualizer/**` changes run visualizer-local checks only
-  - `games/reversi/**` changes run the Reversi game-surface build only
-  - `players/rust-reference/**` changes run the Rust player-surface test and
-    WASM build verification path
-  - `internal/aiarena-protocol/**` changes run the Rust workspace verification
-    path because they affect both game-master and player transport code
-  - `cmd/**`, root Rust-toolchain files, or the Rust workflow definition run the
-    full Rust verification path because those changes can affect multiple Rust
-    surfaces
+- Changes confined to `visualizer/**` use visualizer-local checks. Changes
+  to any tracked Rust workspace member, root Rust-toolchain files, or the Rust
+  workflow definition run the full Rust CI gate. This includes
+  `internal/aiarena-protocol/**`, which affects game-master and player transport.
+- The full gate uses `make verify-rust`, also available locally, for formatting,
+  workspace Clippy with all targets and warnings denied, workspace tests,
+  both WASI builds, and runner E2E.
 - Go support code does not require a dedicated CI lane yet.
 
 The concrete command contract for this policy is defined in

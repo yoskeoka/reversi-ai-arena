@@ -12,13 +12,12 @@ on:
       - "e2e/**"
       - "testdata/**"
       - "games/reversi/**"
+      - "internal/aiarena-protocol/**"
       - "players/fixture-bots/**"
       - "players/rust-reference/**"
       - "tools/rust-ci.sh"
       - "tools/release-packager/**"
       - "docs/specs/submittable-artifacts.md"
-      - "games/reversi/**"
-      - "players/rust-reference/**"
   push:
     branches:
       - main
@@ -32,13 +31,12 @@ on:
       - "e2e/**"
       - "testdata/**"
       - "games/reversi/**"
+      - "internal/aiarena-protocol/**"
       - "players/fixture-bots/**"
       - "players/rust-reference/**"
       - "tools/rust-ci.sh"
       - "tools/release-packager/**"
       - "docs/specs/submittable-artifacts.md"
-      - "games/reversi/**"
-      - "players/rust-reference/**"
 
 jobs:
   detect:
@@ -64,6 +62,7 @@ jobs:
               - "cmd/**"
               - "e2e/**"
               - "testdata/**"
+              - "internal/aiarena-protocol/**"
               - "players/fixture-bots/**"
               - "tools/rust-ci.sh"
               - "tools/release-packager/**"
